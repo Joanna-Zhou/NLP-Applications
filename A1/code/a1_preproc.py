@@ -43,13 +43,13 @@ def preproc1( comment , steps=range(1,11)):
     if 1 in steps:
         # Replace all newline characters with spaces
         comment = comment.replace('\n', '')
-        print("Comment:", comment)
+        print_current(comment, 1)
 
     if 2 in steps:
         # Replace HTML character codes with their ASCII equivalent
         comment = html.unescape(comment) # Python3
         # comment = HTMLParser.HTMLParser().unescape(comment)  # Python2
-        
+        print_current(comment, 2)
 
     if 3 in steps:
         # Remove all URLs (i.e., tokens beginning with http or www or are in the form or xxx.xxx.xxx).
@@ -60,10 +60,12 @@ def preproc1( comment , steps=range(1,11)):
         comment = re.sub(r'www\S+', '', comment, flags=re.MULTILINE)
         # comment = comment.replace('()', ' ')
         # comment = comment.replace('[]', ' ')
+        print_current(comment, 3)
 
     if 4 in steps:
         # Remove duplicate spaces between tokens.
         # Each token must now be separated by a single space.
+        # print_current(comment, 4)
         pass
 
     # Note that 5, 6, 7 are performed with spaCy
@@ -84,11 +86,21 @@ def preproc1( comment , steps=range(1,11)):
 
     return modComm
 
-def main( args ):
 
+
+def main( args ):
     allOutput = []
-    debug = False # flag for debugging
+    
+    # Debug settings
+    debug = True # flag for debugging
+    debug_with_debug_text = True
+    debug_text = "THIS  IS  WHY  ESPN  IS  DYING. \n\nhttp: // www.foxnews.com/entertainment/2017/02/15/espn-sued-for-wrongful-termination-by-announcer-after-venus-williams-match-call.html \nSOCIAL JUSTICE, PC CULTURE, AND POLITICS ALL FUCK OFF FROM MY SPORTS!!!\n\n\"When all else fails, go on their subreddit &amp; downvote all of the comments to show them our feelings &amp; hide the truth!\" I'm not even really convinced he lied to Pence, versus was asked to lie to the public to downplay the Russia propaganda.  But as the facts now don't align with the official story, someone had to fall on their sword.  OR... there is something more going on here behind the scenes.   At face value, this seems like something they could have weathered. \n\nOh it takes that long for EO to be made/reviewed?\n\nThat is the narrative on on / reee/politburo \n\[\"Because it's *obviously* just an alt right smear campaign or something...\"\](https: // imgur.com/HgrT8Qm)"
     firstfile = True
+    
+    if debug_with_debug_text:
+        preproc1(debug_text)
+        return 
+    
     for subdir, dirs, files in os.walk(indir):
         for file in files:
             # For now, only process one file
@@ -109,9 +121,9 @@ def main( args ):
 
             # TODO: read those lines with something like `j = json.loads(line)`
             for line in lines:
-                if debug:
-                    print(line)
                 j = json.loads(line)
+                if debug:
+                    print(j['body'])
 
                 # TODO: choose to retain fields from those lines that are relevant to you
                 relevant_fields = ['body', 'controversiality', 'author', 'score']  # 'id'
@@ -139,13 +151,11 @@ def main( args ):
 
 
 def print_current(comment, step):
-    """Prints the current comments for debuging
-
-    Arguments:
-        comment {[type]} -- [description]
-        step {[type]} -- [description]
     """
-    pass
+    Prints the current comments for debuging
+    """
+    print("At step {}: {}\n".format(step, comment))
+
 
 if __name__ == "__main__":
     # Terminal command: python a1_preproc.py 1003002396 - o preproc.json
@@ -153,7 +163,7 @@ if __name__ == "__main__":
     parser.add_argument('ID', metavar='N', type=int, nargs=1,
                         help='your student ID')
     parser.add_argument("-o", "--output", help="Directs the output to a filename of your choice", required=True)
-    parser.add_argument("--max", help="The maximum number of comments to read from each file", default=10)
+    parser.add_argument("--max", help="The maximum number of comments to read from each file", default=1)
     args = parser.parse_args()
 
     if (args.max > 200272):
