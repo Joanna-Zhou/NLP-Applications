@@ -6,6 +6,7 @@
             "type": "python",
             "request": "launch",
             "program": "${file}",
+            "cwd": "code"
             "console": "integratedTerminal",
             "args": [
                 "1003002396",

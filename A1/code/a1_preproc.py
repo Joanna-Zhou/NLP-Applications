@@ -7,7 +7,7 @@ import json
 # Added dependencies
 import re
 import html # Python3
-import HTMLParser  # Python2
+# import HTMLParser  # Python2
 import string
 import time
 import spacy
@@ -43,12 +43,12 @@ def preproc1( comment , steps=range(1,11)):
     if 1 in steps:
         # Replace all newline characters with spaces
         comment = comment.replace('\n', '')
-        print("Type:", type(comment))
+        print("Comment:", comment)
 
     if 2 in steps:
         # Replace HTML character codes with their ASCII equivalent
-        # comment = html.unescape(comment) # Python3
-        comment = HTMLParser.HTMLParser().unescape(comment)  # Python2
+        comment = html.unescape(comment) # Python3
+        # comment = HTMLParser.HTMLParser().unescape(comment)  # Python2
         
 
     if 3 in steps:
@@ -87,11 +87,12 @@ def preproc1( comment , steps=range(1,11)):
 def main( args ):
 
     allOutput = []
+    debug = False # flag for debugging
     firstfile = True
     for subdir, dirs, files in os.walk(indir):
         for file in files:
             # For now, only process one file
-            if not firstfile: 
+            if debug and not firstfile: 
                 break
             firstfile = False
             
@@ -108,24 +109,25 @@ def main( args ):
 
             # TODO: read those lines with something like `j = json.loads(line)`
             for line in lines:
-                print(line)
+                if debug:
+                    print(line)
                 j = json.loads(line)
 
-            # TODO: choose to retain fields from those lines that are relevant to you
-            relevant_fields = ['body', 'controversiality', 'author', 'score']  # 'id'
-            j = ({key: j[key] for key in relevant_fields})
+                # TODO: choose to retain fields from those lines that are relevant to you
+                relevant_fields = ['body', 'controversiality', 'author', 'score']  # 'id'
+                j = ({key: j[key] for key in relevant_fields})
 
-            # TODO: add a field to each selected line called 'cat' with the value of 'file' (e.g., 'Alt', 'Right', ...)
-            j['cat'] = file
+                # TODO: add a field to each selected line called 'cat' with the value of 'file' (e.g., 'Alt', 'Right', ...)
+                j['cat'] = file
 
-            # TODO: process the body field (j['body']) with preproc1(...) using default for `steps` argument
-            pre_text = preproc1(j['body'])
+                # TODO: process the body field (j['body']) with preproc1(...) using default for `steps` argument
+                pre_text = preproc1(j['body'])
 
-            # TODO: replace the 'body' field with the processed text
-            j['body'] = pre_text
+                # TODO: replace the 'body' field with the processed text
+                # j['body'] = pre_text
 
-            # TODO: append the result to 'allOutput'
-            # allOutput.append(j)
+                # TODO: append the result to 'allOutput'
+                # allOutput.append(j)
 
             # Finish processing file
             end_time = time.time()
