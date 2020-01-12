@@ -286,8 +286,8 @@ def main(args):
         if i % checkpoint == 0:
             print("Processing the {}th data out of {}.".format(
                 (i*checkpoint+1), data_length))
-            if debug:
-                print(feats[i])
+            # if debug:
+            #     print(feats[i])
 
     # TODO: check on the big corpus to make sure there's no column that is all zero!
     if debug:
