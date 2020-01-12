@@ -12,7 +12,7 @@
                 "--input",
                 "preproc_small.json",
                 "--output",
-                "feats.npz",
+                "feats_small.npz",
                 "--a1_dir",
                 "/Users/joanna.zyz/CSC401Assignments/CSC401A1/"
             ]

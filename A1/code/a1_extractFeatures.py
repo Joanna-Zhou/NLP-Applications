@@ -41,7 +41,7 @@ def extract1(comment):
     '''
     # Initialize array and separate the tokens vs. tags
     print('\nComment:\n'+comment)
-    feats = np.zeros((1, 173))
+    feats = np.zeros((173,))
     tokens = re.compile(
         "([\w]+|[\W]+)/(?=[\w]+|[\W]+)").findall(comment)
     tags = re.compile(
@@ -50,7 +50,7 @@ def extract1(comment):
     # TODO: Extract features that rely on capitalization.
     # 1. Number of words in uppercase( 3 letters long)
     uppers = re.compile("(^| )[A-Z]{3,}").findall(comment)
-    feats[0][0] = len(uppers)
+    feats[0] = len(uppers)
 
     # TODO: Lowercase the text in comment. Be careful not to lowercase the tags. (e.g. "Dog/NN" -> "dog/NN").
     comment_lc = comment.lower()
@@ -59,79 +59,82 @@ def extract1(comment):
     # (ref: https://stackoverflow.com/questions/452104/is-it-worth-using-pythons-re-compile)
     fpps = re.compile(
         r'\b(' + r'|'.join(FIRST_PERSON_PRONOUNS) + r')\b').findall(comment_lc)
-    feats[0][1] = len(fpps)
+    feats[1] = len(fpps)
 
     # 3. Number of second-person pronouns
     spps = re.compile(
         r'\b(' + r'|'.join(SECOND_PERSON_PRONOUNS) + r')\b').findall(comment_lc)
-    feats[0][2] = len(spps)
+    feats[2] = len(spps)
 
     # 4. Number of third-person pronouns
     tpps = re.compile(
         r'\b(' + r'|'.join(THIRD_PERSON_PRONOUNS) + r')\b').findall(comment_lc)
-    feats[0][3] = len(tpps)
+    feats[3] = len(tpps)
 
     # 5. Number of coordinating conjunctions
-    ccs = re.compile(r"\/CC( |$)").findall(comment_lc)
-    feats[0][4] = len(ccs)
+    ccs = re.compile(r"\/CC( |$)").findall(comment)
+    feats[4] = len(ccs)
 
     # 6. Number of past-tense verbs
-    pts = re.compile(r"\/VBD( |$)").findall(comment_lc)
-    feats[0][5] = len(pts)
+    pts = re.compile(r"\/VBD( |$)").findall(comment)
+    feats[5] = len(pts)
+    print("Past tense:", feats[5])
 
     # 7. Number of future-tense verbs
     fts = re.compile(r"(^| )(will|'ll|gonna)\/").findall(comment_lc)
     fts_tagged = re.compile(
         r"(^| )going\/\S+ to\/\S+ \S+\/VB( |$)").findall(comment)
-    feats[0][6] = len(fts) + len(fts_tagged)
+    feats[6] = len(fts) + len(fts_tagged)
+    print("Future tense:", feats[6])
 
     # 8. Number of commas
     commas = re.compile(r"(^| ),\/,( |$)").findall(comment_lc)
-    feats[0][7] = len(commas)
+    feats[7] = len(commas)
 
     # 9. Number of multi-character punctuation tokens
     mcps = re.compile(
         r"(^| )(([^\s\w]{2,})(\")|([^\s\w]{2,}))\/").findall(comment_lc)
-    feats[0][8] = len(mcps)
+    feats[8] = len(mcps)
 
     # 10. Number of common nouns
     cnns = re.compile(r"\/(NN|NNS)( |$)").findall(comment_lc)
-    feats[0][9] = len(cnns)
+    feats[9] = len(cnns)
 
     # 11. Number of proper nouns
     pnns = re.compile(r"\/(NNP|NNPS)( |$)").findall(comment_lc)
-    feats[0][10] = len(pnns)
+    feats[10] = len(pnns)
 
     # 12. Number of adverbs
     advs = re.compile(r"\/(RB|RBR|RBS)( |$)").findall(comment_lc)
-    feats[0][11] = len(advs)
+    feats[11] = len(advs)
 
     # 13. Number of wh - words
     whs = re.compile(r"\/(WDT|WP|WP\$|WRB)( |$)").findall(comment_lc)
-    feats[0][12] = len(whs)
+    feats[12] = len(whs)
 
     # 14. Number of slang acronyms
     slangs = re.compile(r'\b(' + r'|'.join(SLANG) + r')\b').findall(comment_lc)
-    feats[0][13] = len(slangs)
+    feats[13] = len(slangs)
 
     # 15. Average length of sentences, in tokens
     # TODO: decide if i want to keep that extra \n at the end of comment,
     #       if not, +1 in sents and modify that in a1_preproc
     sents = comment_lc.count('\n')
-    feats[0][14] = 0 if (sents == 0) else len(tokens)/sents
+    feats[14] = 0 if (sents == 0) else len(tokens)/sents
 
     # 16. Average length of tokens, excluding punctuation-only tokens, in characters
     words = re.compile(r"[^\s\w]*\w\S*\/").findall(comment_lc)
     if len(words) == 0: # only punctuations, no words
-        feats[0][15] = 0
+        feats[15] = 0
     else:
         total_len = 0
         for word in words:
             total_len += len(word)
-        feats[0][15] = total_len/len(words) - 1  # Minus the slash after each word
+        feats[15] = total_len/len(words) - 1  # Minus the slash after each word
 
     # 17. Number of sentences.
-    feats[0][16] = sents
+    feats[16] = sents
+    print('Average num of sents', feats[16])
 
     # 18. Average of AoA(100-700) from Bristol, Gilhooly, and Logie norms
     # 19. Average of IMG from Bristol, Gilhooly, and Logie norms
@@ -139,13 +142,33 @@ def extract1(comment):
     # 21. Standard deviation of AoA(100-700) from Bristol, Gilhooly, and Logie norms
     # 22. Standard deviation of IMG from Bristol, Gilhooly, and Logie norms
     # 23. Standard deviation of FAM from Bristol, Gilhooly, and Logie norms
+    AoA, IMG, FAM = [], [], []
+    for token in tokens:
+        if token in BGL.keys():
+            AoA.append(BGL[token]["AoA"])
+            IMG.append(BGL[token]["IMG"])
+            FAM.append(BGL[token]["FAM"])
+    if len(AoA) > 0:
+        feats[17:20] = np.mean(AoA), np.mean(IMG), np.mean(FAM)
+        feats[20:23] = np.std(AoA), np.std(IMG), np.std(FAM)
+
     # 24. Average of V.Mean.Sum from Warringer norms
     # 25. Average of A.Mean.Sum from Warringer norms
     # 26. Average of D.Mean.Sum from Warringer norms
     # 27. Standard deviation of V.Mean.Sum from Warringer norms
     # 28. Standard deviation of A.Mean.Sum from Warringer norms
     # 29. Standard deviation of D.Mean.Sum from Warringer norms
-    # TODO: Extract features that do not rely on capitalization.
+    V, A, D = [], [], []
+    for token in tokens:
+        if token in WARRINGER.keys():
+            V.append(WARRINGER[token]["V"])
+            A.append(WARRINGER[token]["A"])
+            D.append(WARRINGER[token]["D"])
+    if len(V) > 0:
+        feats[23:26] = np.mean(V), np.mean(D), np.mean(A)
+        feats[26:29] = np.std(V), np.std(D), np.std(A)
+
+    # Done extracting the first 1-29 features
     return feats
 
 
@@ -211,7 +234,7 @@ def setup(dir):
 
     for row in csv.DictReader(warringer_file):
         try:
-            WARRINGER[row["WORD"]] = {
+            WARRINGER[row["Word"]] = {
                 "V": float(row["V.Mean.Sum"]),
                 "A": float(row["A.Mean.Sum"]),
                 "D": float(row["D.Mean.Sum"])
@@ -239,22 +262,18 @@ def main(args):
     data = json.load(open(args.input))
     data_length = len(data)
     feats = np.zeros((data_length, 173+1))
-
-    # dir_feats = "/u/cs401/A1/feats"
-    # alt_data = np.load(dir_feats + '/Alt_feats.dat.npy')
-    # center_data = np.load(dir_feats + '/Center_feats.dat.npy')
-    # left_data = np.load(dir_feats + '/Left_feats.dat.npy')
-    # right_data = np.load(dir_feats + '/Right_feats.dat.npy')
+    checkpoint = 5
 
     setup(args.a1_dir)
 
-    # print("Processing data...")
-    # for i in range(data_length):
-    #     feats[i] = extract(data[i])
-    #     print(i, feats[i])
-    #     if i % 100 == 0:
-    #         print("Processing the {}th data out of {}.".format(i*100, data_length))
+    print("Processing data...")
+    for i in range(data_length):
+        feats[i] = extract(data[i])
+        if i % checkpoint == 0:
+            # print(i, feats[i])
+            print("Processing the {}th data out of {}.".format(i*checkpoint, data_length))
 
+    # TODO: check on the big corpus to make sure there's no colume that is all zero!
     np.savez_compressed(args.output, feats)
 
 
