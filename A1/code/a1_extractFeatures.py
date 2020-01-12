@@ -112,8 +112,24 @@ def extract1(comment):
     feats[0][13] = len(slangs)
 
     # 15. Average length of sentences, in tokens
+    # TODO: decide if i want to keep that extra \n at the end of comment,
+    #       if not, +1 in sents and modify that in a1_preproc
+    sents = comment_lc.count('\n')
+    feats[0][14] = 0 if (sents == 0) else len(tokens)/sents
+
     # 16. Average length of tokens, excluding punctuation-only tokens, in characters
+    words = re.compile(r"[^\s\w]*\w\S*\/").findall(comment_lc)
+    if len(words) == 0: # only punctuations, no words
+        feats[0][15] = 0
+    else:
+        total_len = 0
+        for word in words:
+            total_len += len(word)
+        feats[0][15] = total_len/len(words) - 1  # Minus the slash after each word
+
     # 17. Number of sentences.
+    feats[0][16] = sents
+
     # 18. Average of AoA(100-700) from Bristol, Gilhooly, and Logie norms
     # 19. Average of IMG from Bristol, Gilhooly, and Logie norms
     # 20. Average of FAM from Bristol, Gilhooly, and Logie norms
