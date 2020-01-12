@@ -41,7 +41,7 @@ def preproc1(comment, steps=range(1, 5)):
     '''
 
     # Other preprocessing steps like punctuation splitting, etc.
-    full_preproc = 0
+    full_preproc = True
     if full_preproc:
         ignore_list = abbrev + ['e.g.', 'i.e.']
     print_current(comment, 0, 'original')
@@ -195,6 +195,7 @@ if __name__ == "__main__":
         sys.exit(1)
 
     # python3 a1_preproc.py 1003002396 -o preproc.json --a1_dir /Users/joanna.zyz/CSC401Assignments/CSC401A1/
+    # python3 a1_preproc.py 1003002396 -o preproc_small.json --a1_dir /Users/joanna.zyz/CSC401Assignments/CSC401A1/ --max 1
     indir = os.path.join(args.a1_dir, 'data')
     # abbrev_path = os.path.join(args.a1_dir, 'wordlists/abbrev.english')
     main(args)

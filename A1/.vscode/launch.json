@@ -10,7 +10,7 @@
             "cwd": "code",
             "args": [
                 "--input",
-                "preproc.json",
+                "preproc_small.json",
                 "--output",
                 "feats.npz",
                 "--a1_dir",
@@ -27,7 +27,7 @@
             "args": [
                 "1003002396",
                 "--output",
-                "preproc.json",
+                "preproc_small.json",
                 "--max",
                 "1",
                 "--a1_dir",

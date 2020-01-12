@@ -5,7 +5,9 @@ import json
 
 # Added dependencies
 import sys
-import json
+import re
+import string
+import time
 
 # Provided wordlists.
 FIRST_PERSON_PRONOUNS = {
@@ -22,6 +24,8 @@ SLANG = {
     'afn', 'bbs', 'cya', 'ez', 'f2f', 'gtr', 'ic', 'jk', 'k', 'ly', 'ya',
     'nm', 'np', 'plz', 'ru', 'so', 'tc', 'tmi', 'ym', 'ur', 'u', 'sol', 'fml'}
 
+# Added lists/dictionaries
+CAT_TO_INT = {"Left": 0, "Center": 1, "Right": 2, "Alt": 3}
 
 def extract1(comment):
     ''' This function extracts features from a single comment
@@ -33,6 +37,7 @@ def extract1(comment):
         feats : numpy Array, a 173-length vector of floating point features (only the first 29 are expected to be filled, here)
     '''
     # Initialize array and separate the tokens vs. tags
+    print('\nComment:\n'+comment)
     feats = np.zeros((1, 173))
     tokens = re.compile(
         "([\w]+|[\W]+)/(?=[\w]+|[\W]+)").findall(comment)
@@ -41,41 +46,71 @@ def extract1(comment):
 
     # TODO: Extract features that rely on capitalization.
     # 1. Number of words in uppercase( 3 letters long)
-    for e in body:
-        if e.isupper and len(e)>3:
-            feats[0][0] += 1
+    uppers = re.compile("(^| )[A-Z]{3,}").findall(comment)
+    feats[0][0] = len(uppers)
 
     # TODO: Lowercase the text in comment. Be careful not to lowercase the tags. (e.g. "Dog/NN" -> "dog/NN").
     comment_lc = comment.lower()
     # 2. Number of first-person pronouns
     # Used re.compile as it is faster than re.match
     # (ref: https://stackoverflow.com/questions/452104/is-it-worth-using-pythons-re-compile)
-    fpp_list = ['i','me','my','mine','we','us','our','ours']
-    fpps = re.compile(r'\b(' + r'|'.join(fpp_list) + r')\b').findall(comment_lc)
+    fpps = re.compile(
+        r'\b(' + r'|'.join(FIRST_PERSON_PRONOUNS) + r')\b').findall(comment_lc)
     feats[0][1] = len(fpps)
-    
+
     # 3. Number of second-person pronouns
-    spp_list = ['you', 'your', 'yours', 'u', 'ur', 'urs']
-    spps = re.compile(r'\b(' + r'|'.join(spp_list) + r')\b').findall(comment_lc)
-    print(spps)
+    spps = re.compile(
+        r'\b(' + r'|'.join(SECOND_PERSON_PRONOUNS) + r')\b').findall(comment_lc)
     feats[0][2] = len(spps)
-    
+
     # 4. Number of third-person pronouns
-    tpp_list = ['he', 'him', 'his', 'she', 'her', 'hers',
-                'it', 'its', 'they', 'them', 'their', 'theirs']
-    tpps = re.compile(r'\b(' + r'|'.join(tpp_list) + r')\b').findall(comment_lc)
+    tpps = re.compile(
+        r'\b(' + r'|'.join(THIRD_PERSON_PRONOUNS) + r')\b').findall(comment_lc)
     feats[0][3] = len(tpps)
 
     # 5. Number of coordinating conjunctions
+    ccs = re.compile(r"\/CC( |$)").findall(comment_lc)
+    feats[0][4] = len(ccs)
+
     # 6. Number of past-tense verbs
+    pts = re.compile(r"\/VBD( |$)").findall(comment_lc)
+    feats[0][5] = len(pts)
+
     # 7. Number of future-tense verbs
+    fts = re.compile(r"(^| )(will|'ll|gonna)\/").findall(comment_lc)
+    fts_tagged = re.compile(
+        r"(^| )going\/\S+ to\/\S+ \S+\/VB( |$)").findall(comment)
+    feats[0][6] = len(fts) + len(fts_tagged)
+
     # 8. Number of commas
+    commas = re.compile(r"(^| ),\/,( |$)").findall(comment_lc)
+    feats[0][7] = len(commas)
+
     # 9. Number of multi-character punctuation tokens
+    mcps = re.compile(
+        r"(^| )(([^\s\w]{2,})(\")|([^\s\w]{2,}))\/").findall(comment_lc)
+    feats[0][8] = len(mcps)
+
     # 10. Number of common nouns
+    cnns = re.compile(r"\/(NN|NNS)( |$)").findall(comment_lc)
+    feats[0][9] = len(cnns)
+
     # 11. Number of proper nouns
+    pnns = re.compile(r"\/(NNP|NNPS)( |$)").findall(comment_lc)
+    feats[0][10] = len(pnns)
+
     # 12. Number of adverbs
+    advs = re.compile(r"\/(RB|RBR|RBS)( |$)").findall(comment_lc)
+    feats[0][11] = len(advs)
+
     # 13. Number of wh - words
+    whs = re.compile(r"\/(WDT|WP|WP\$|WRB)( |$)").findall(comment_lc)
+    feats[0][12] = len(whs)
+
     # 14. Number of slang acronyms
+    slangs = re.compile(r'\b(' + r'|'.join(SLANG) + r')\b').findall(comment_lc)
+    feats[0][13] = len(slangs)
+
     # 15. Average length of sentences, in tokens
     # 16. Average length of tokens, excluding punctuation-only tokens, in characters
     # 17. Number of sentences.
@@ -92,7 +127,7 @@ def extract1(comment):
     # 28. Standard deviation of A.Mean.Sum from Warringer norms
     # 29. Standard deviation of D.Mean.Sum from Warringer norms
     # TODO: Extract features that do not rely on capitalization.
-    print('TODO')
+    return feats
 
 
 def extract2(feats, comment_class, comment_id):
@@ -111,16 +146,41 @@ def extract2(feats, comment_class, comment_id):
     print('TODO')
 
 
+def extract(data):
+    """Extracts all data
+
+    Arguments:
+        data {[type]} -- [description]
+
+    Returns:
+        feats {1 x (173+1) ndarray} -- 1 row of feartures
+    """
+    comment, cat, idx = data['body'], data['cat'], data['id']
+
+    feats = np.zeros((173+1,))
+    feats[:-1] = extract1(comment)
+    # feats[29:-1] = extract_LIWC(cat, idx)
+    feats[-1] = CAT_TO_INT[cat]
+    return feats
+
+
 def main(args):
     data = json.load(open(args.input))
-    feats = np.zeros((len(data), 173+1))
+    data_length = len(data)
+    feats = np.zeros((data_length, 173+1))
 
-    # TODO: Use extract1 to find the first 29 features for each
-    # data point. Add these to feats.
-    # TODO: Use extract2 to copy LIWC features (features 30-173)
-    # into feats. (Note that these rely on each data point's class,
-    # which is why we can't add them in extract1).
-    print('TODO')
+    # dir_feats = "/u/cs401/A1/feats"
+    # alt_data = np.load(dir_feats + '/Alt_feats.dat.npy')
+    # center_data = np.load(dir_feats + '/Center_feats.dat.npy')
+    # left_data = np.load(dir_feats + '/Left_feats.dat.npy')
+    # right_data = np.load(dir_feats + '/Right_feats.dat.npy')
+
+    print("Processing data...")
+    for i in range(data_length):
+        feats[i] = extract(data[i])
+        print(i, feats[i])
+        if i % 100 == 0:
+            print("Processing the {}th data out of {}.".format(i*100, data_length))
 
     np.savez_compressed(args.output, feats)
 
