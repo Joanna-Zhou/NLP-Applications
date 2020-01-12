@@ -40,12 +40,11 @@ def extract1(comment):
         feats : numpy Array, a 173-length vector of floating point features (only the first 29 are expected to be filled, here)
     '''
     # Initialize array and separate the tokens vs. tags
-    print('\nComment:\n'+comment)
+    # if debug:
+        #  print('\nComment:\n'+comment)
     feats = np.zeros((173,))
     tokens = re.compile(
         "([\w]+|[\W]+)/(?=[\w]+|[\W]+)").findall(comment)
-    tags = re.compile(
-        "(?=[\w]+|[\W]+)/([\w]+|[\W]+)").findall(comment)
 
     # TODO: Extract features that rely on capitalization.
     # 1. Number of words in uppercase( 3 letters long)
@@ -78,14 +77,12 @@ def extract1(comment):
     # 6. Number of past-tense verbs
     pts = re.compile(r"\/VBD( |$)").findall(comment)
     feats[5] = len(pts)
-    print("Past tense:", feats[5])
 
     # 7. Number of future-tense verbs
     fts = re.compile(r"(^| )(will|'ll|gonna)\/").findall(comment_lc)
     fts_tagged = re.compile(
         r"(^| )going\/\S+ to\/\S+ \S+\/VB( |$)").findall(comment)
     feats[6] = len(fts) + len(fts_tagged)
-    print("Future tense:", feats[6])
 
     # 8. Number of commas
     commas = re.compile(r"(^| ),\/,( |$)").findall(comment_lc)
@@ -97,19 +94,19 @@ def extract1(comment):
     feats[8] = len(mcps)
 
     # 10. Number of common nouns
-    cnns = re.compile(r"\/(NN|NNS)( |$)").findall(comment_lc)
+    cnns = re.compile(r"\/(NN|NNS)( |$)").findall(comment)
     feats[9] = len(cnns)
 
     # 11. Number of proper nouns
-    pnns = re.compile(r"\/(NNP|NNPS)( |$)").findall(comment_lc)
+    pnns = re.compile(r"\/(NNP|NNPS)( |$)").findall(comment)
     feats[10] = len(pnns)
 
     # 12. Number of adverbs
-    advs = re.compile(r"\/(RB|RBR|RBS)( |$)").findall(comment_lc)
+    advs = re.compile(r"\/(RB|RBR|RBS)( |$)").findall(comment)
     feats[11] = len(advs)
 
     # 13. Number of wh - words
-    whs = re.compile(r"\/(WDT|WP|WP\$|WRB)( |$)").findall(comment_lc)
+    whs = re.compile(r"\/(WDT|WP|WP\$|WRB)( |$)").findall(comment)
     feats[12] = len(whs)
 
     # 14. Number of slang acronyms
@@ -124,7 +121,7 @@ def extract1(comment):
 
     # 16. Average length of tokens, excluding punctuation-only tokens, in characters
     words = re.compile(r"[^\s\w]*\w\S*\/").findall(comment_lc)
-    if len(words) == 0: # only punctuations, no words
+    if len(words) == 0:  # only punctuations, no words
         feats[15] = 0
     else:
         total_len = 0
@@ -134,7 +131,6 @@ def extract1(comment):
 
     # 17. Number of sentences.
     feats[16] = sents
-    print('Average num of sents', feats[16])
 
     # 18. Average of AoA(100-700) from Bristol, Gilhooly, and Logie norms
     # 19. Average of IMG from Bristol, Gilhooly, and Logie norms
@@ -185,7 +181,8 @@ def extract2(feats, comment_class, comment_id):
         function adds feature 30-173). This should be a modified version of
         the parameter feats.
     '''
-    print('TODO')
+    feats[29:] = LIWC[comment_class][comment_id]
+    return feats
 
 
 def extract(data):
@@ -197,11 +194,11 @@ def extract(data):
     Returns:
         feats {1 x (173+1) ndarray} -- 1 row of feartures
     """
-    comment, cat, idx = data['body'], data['cat'], data['id']
+    comment, cat, id = data['body'], data['cat'], data['id']
 
     feats = np.zeros((173+1,))
     feats[:-1] = extract1(comment)
-    # feats[29:-1] = extract_LIWC(cat, idx)
+    feats[:-1] = extract2(feats[:-1], cat, id)
     feats[-1] = CAT_TO_INT[cat]
     return feats
 
@@ -258,11 +255,28 @@ def setup(dir):
     return
 
 
+def sanity_check(feats):
+    """Check and visualize the output numpy array
+
+    Arguments:
+        feats { len(data) x 174 }
+    """
+    print("+++++++++++++++++++++++++ Sanity Check +++++++++++++++++++++++++")
+    print("Shape:", feats.shape)
+    print("Mean values on the features:")
+    means = np.mean(feats, axis=0)
+    print(means)
+    print("++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++")
+
+
 def main(args):
     data = json.load(open(args.input))
     data_length = len(data)
     feats = np.zeros((data_length, 173+1))
-    checkpoint = 5
+    checkpoint = 100
+    
+    global debug
+    debug = True
 
     setup(args.a1_dir)
 
@@ -270,19 +284,28 @@ def main(args):
     for i in range(data_length):
         feats[i] = extract(data[i])
         if i % checkpoint == 0:
-            # print(i, feats[i])
-            print("Processing the {}th data out of {}.".format(i*checkpoint, data_length))
+            print("Processing the {}th data out of {}.".format(
+                (i*checkpoint+1), data_length))
+            if debug:
+                print(feats[i])
 
-    # TODO: check on the big corpus to make sure there's no colume that is all zero!
+    # TODO: check on the big corpus to make sure there's no column that is all zero!
+    if debug:
+        sanity_check(feats)
     np.savez_compressed(args.output, feats)
 
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='Process each .')
-    parser.add_argument("-o", "--output", help="Directs the output to a filename of your choice", required=True)
-    parser.add_argument("-i", "--input", help="The input JSON file, preprocessed as in Task 1", required=True)
-    parser.add_argument("-p", "--a1_dir", help="Path to csc401 A1 directory. By default it is set to the cdf directory for the assignment.", default="/u/cs401/A1/")
+    parser.add_argument(
+        "-o", "--output", help="Directs the output to a filename of your choice", required=True)
+    parser.add_argument(
+        "-i", "--input", help="The input JSON file, preprocessed as in Task 1", required=True)
+    parser.add_argument(
+        "-p", "--a1_dir", help="Path to csc401 A1 directory. By default it is set to the cdf directory for the assignment.", default="/u/cs401/A1/")
     args = parser.parse_args()
 
     main(args)
 
+# python3 a1_extractFeatures.py -i preproc_small.json -o feats_small.npz --a1_dir /Users/joanna.zyz/CSC401Assignments/CSC401A1/
+# python3 a1_extractFeatures.py -i preproc_medium.json -o feats_medium.npz --a1_dir /Users/joanna.zyz/CSC401Assignments/CSC401A1/

@@ -196,6 +196,7 @@ if __name__ == "__main__":
 
     # python3 a1_preproc.py 1003002396 -o preproc.json --a1_dir /Users/joanna.zyz/CSC401Assignments/CSC401A1/
     # python3 a1_preproc.py 1003002396 -o preproc_small.json --a1_dir /Users/joanna.zyz/CSC401Assignments/CSC401A1/ --max 1
+    # python3 a1_preproc.py 1003002396 -o preproc_medium.json --a1_dir /Users/joanna.zyz/CSC401Assignments/CSC401A1/ --max 10
     indir = os.path.join(args.a1_dir, 'data')
     # abbrev_path = os.path.join(args.a1_dir, 'wordlists/abbrev.english')
     main(args)
