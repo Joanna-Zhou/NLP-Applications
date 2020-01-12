@@ -4,10 +4,12 @@ import argparse
 import json
 
 # Added dependencies
+import os
 import sys
 import re
 import string
 import time
+import csv
 
 # Provided wordlists.
 FIRST_PERSON_PRONOUNS = {
@@ -26,6 +28,7 @@ SLANG = {
 
 # Added lists/dictionaries
 CAT_TO_INT = {"Left": 0, "Center": 1, "Right": 2, "Alt": 3}
+
 
 def extract1(comment):
     ''' This function extracts features from a single comment
@@ -180,6 +183,58 @@ def extract(data):
     return feats
 
 
+def setup(dir):
+    """Set up the global variables (dictionaries)
+
+    Arguments:
+        dir {String} -- Path to A1 directory
+    """
+    print("Seting up gloval dictionaries...")
+
+    global BGL, WARRINGER, LIWC
+    BGL, WARRINGER, LIWC = {}, {}, {}
+
+    # Create the dictionaries for the norms first
+    subdir_wordlists = os.path.join(args.a1_dir, 'wordlists/')
+    bgl_file = open(subdir_wordlists + 'BristolNorms+GilhoolyLogie.csv', 'r')
+    warringer_file = open(subdir_wordlists + 'Ratings_Warriner_et_al.csv', 'r')
+
+    for row in csv.DictReader(bgl_file):
+        try:
+            BGL[row["WORD"]] = {
+                "AoA": float(row["AoA (100-700)"]),
+                "IMG": float(row["IMG"]),
+                "FAM": float(row["FAM"])
+            }
+        except:
+            pass
+
+    for row in csv.DictReader(warringer_file):
+        try:
+            WARRINGER[row["WORD"]] = {
+                "V": float(row["V.Mean.Sum"]),
+                "A": float(row["A.Mean.Sum"]),
+                "D": float(row["D.Mean.Sum"])
+            }
+        except:
+            pass
+
+    # Now, create the dictionaries for LIWC
+    subdir_feats = os.path.join(args.a1_dir, 'feats/')
+    for cat in ["Alt", "Center", "Right", "Left"]:
+        LIWC[cat] = {}
+        id_file = os.path.join(subdir_feats, cat + '_IDs.txt')
+        ids = open(id_file)
+        data_file = os.path.join(subdir_feats, cat + "_feats.dat.npy")
+        data = np.load(data_file)
+        for id, row in zip(ids, data):
+            LIWC[cat][id.strip()] = row
+
+    print("Finish loading global dictionaries.")
+
+    return
+
+
 def main(args):
     data = json.load(open(args.input))
     data_length = len(data)
@@ -191,12 +246,14 @@ def main(args):
     # left_data = np.load(dir_feats + '/Left_feats.dat.npy')
     # right_data = np.load(dir_feats + '/Right_feats.dat.npy')
 
-    print("Processing data...")
-    for i in range(data_length):
-        feats[i] = extract(data[i])
-        print(i, feats[i])
-        if i % 100 == 0:
-            print("Processing the {}th data out of {}.".format(i*100, data_length))
+    setup(args.a1_dir)
+
+    # print("Processing data...")
+    # for i in range(data_length):
+    #     feats[i] = extract(data[i])
+    #     print(i, feats[i])
+    #     if i % 100 == 0:
+    #         print("Processing the {}th data out of {}.".format(i*100, data_length))
 
     np.savez_compressed(args.output, feats)
 
