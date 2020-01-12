@@ -20,12 +20,6 @@ abbrev_path = '../wordlists/abbrev.english'
 abbrev = open(abbrev_path, 'r')
 abbrev = abbrev.read().split('\n')
 
-#StopWords_path = '/u/cs401/Wordlists/StopWords'
-StopWords_path = '../wordlists/StopWords'
-StopWords = open(StopWords_path, 'r')
-StopWords = StopWords.read().split('\n')
-
-
 def print_current(comment, step, note=''):
     """
     Prints the current comments for debuging
@@ -47,8 +41,10 @@ def preproc1(comment, steps=range(1, 5)):
     '''
 
     # Other preprocessing steps like punctuation splitting, etc.
-    full_preproc = True
-    print_current(comment, 0)
+    full_preproc = 0
+    if full_preproc:
+        ignore_list = abbrev + ['e.g.', 'i.e.']
+    print_current(comment, 0, 'original')
 
     modComm = comment
     if 1 in steps:  # replace newlines with spaces
@@ -79,51 +75,45 @@ def preproc1(comment, steps=range(1, 5)):
         # print_current(modComm, 4)
 
     # TODO: get Spacy document for modComm
+    utt = nlp(modComm)
+    modComm = ''
 
     # TODO: use Spacy document for modComm to create a string.
     # Make sure to:
     #    * Insert "\n" between sentences.
     #    * Split tokens with spaces.
     #    * Write "/POS" after each token.
-    if full_preproc:
-        # Further refine the text by separating punctuations from text
-        doc = re.compile("[\S]+").findall(modComm)
-        ignore_list = abbrev + ['e.g.', 'i.e.']
-        modComm = ''
+    for sent in utt.sents:
+        senttext = sent.text
+        if senttext == '': # Empty line
+            continue
+
+        if full_preproc:
+            # Further refine the text by separating punctuations from text
+            doc = re.compile("[\S]+").findall(sent.text)
+            senttext = ''
+            for token in doc:
+                if not token in ignore_list:
+                    token = re.sub(
+                        r"[\W]+|[\w']+|[!\"#$%&\(\)*+,-./:;<=>?@[\]^_`{|}~\\]+", lambda pat: pat.group(0)+' ', token)
+                senttext += token
+
+        # Tagging: Tag each token with its part-of-speech.
+        # A tagged token consists of a word, the `/' symbol, and the tag(e.g., dog/NN).
+        doc = re.compile("[\S]+").findall(senttext)
+        doc = spacy.tokens.Doc(nlp.vocab, words=doc)
+        doc = nlp.tagger(doc)
+        senttext = ''
         for token in doc:
-            if not token in ignore_list:
-                token = re.sub(
-                    r"[\W]+|[\w']+|[!\"#$%&\(\)*+,-./:;<=>?@[\]^_`{|}~\\]+", lambda pat: pat.group(0)+' ', token)
-            modComm += token
-        # print_current(modComm, 4.5)
+            if token.text != '':
+                if token.lemma_.startswith('-') and not token.text.startswith('-'):
+                    senttext += token.text + '/' + token.tag_
+                else:
+                    senttext += token.lemma_ + '/' + token.tag_
+            senttext += ' '
+        modComm += senttext + '\n'
 
-    # Tagging: Tag each token with its part-of-speech.
-    # A tagged token consists of a word, the `/' symbol, and the tag(e.g., dog/NN).
-    doc = re.compile("[\S]+").findall(modComm)
-    doc = spacy.tokens.Doc(nlp.vocab, words=doc)
-    doc = nlp.tagger(doc)
-    modComm = ''
-    for token in doc:
-        modComm += str(token.text) + '/' + token.tag_ + ' '
-    print_current(modComm, 5)
-
-    # Lemmatization: Replace the token itself with the “token.lemma”.
-    # E.g., words/NNS becomes word/NNS.
-    # If the lemma begins with a dash (`-') when the token doesn't (e.g., -PRON- for I）, just keep the token.
-    doc = modComm.split()
-    modComm = ''
-    for tokenWithTag in doc:
-        token = tokenWithTag.split('/')[0]
-        if token != '':
-            tokenInfo = nlp(token)[0]
-            if tokenInfo.lemma_.startswith('-') and not token.startswith('-'):
-                modComm += token + '/' + tokenInfo.tag_ + ' '
-            else:
-                modComm += tokenInfo.lemma_ + '/' + tokenInfo.tag_ + ' '
-        else:
-            modComm += tokenWithTag + ' '
-    print_current(modComm, 6)
-
+    print_current(modComm, 5, 'final')
     return modComm
 
 
@@ -131,16 +121,20 @@ def main(args):
     allOutput = []
 
     # Debug settings
-    debug_with_debug_text = True
+    debug = True
+    debug_with_debug_text = False
     debug_text = "THIS IS  WHY      ESPN    IS  DYING. \n\nhttp: // www.foxnews.com/entertainment/2017/02/15/espn-sued-for-wrongful-termination-by-announcer-after-venus-williams-match-call.html \nSOCIAL JUSTICE, PC CULTURE, AND POLITICS ALL FUCK OFF FROM MY SPORTS!!!\n\n\"When all else fails, go on their subreddit &amp; downvote all of the comments to show them our feelings &amp; hide the truth!\" I'm not even really convinced he lied to Pence, versus was asked to lie to the public to downplay the Russia propaganda.  But as the facts now don't align with the official story, someone had to fall on their sword.  OR... there is something more going on here behind the scenes.   At face value, this seems like something they could have weathered. \n\nOh it takes that long for EO to be made/reviewed?\n\nThat is the narrative on on / reee/politburo \n\[\"Because it's *obviously* just an alt right smear campaign or something...\"\](https: // imgur.com/HgrT8Qm)"
 
-    # if debug_with_debug_text:
-    #     preproc1(debug_text)
-    #     return
+    if debug_with_debug_text:
+        preproc1(debug_text)
+        return
 
     for subdir, dirs, files in os.walk(indir):
         print("Processing files...")
         for file in files:
+            if debug and file != 'Left':
+                continue
+
             # Start recording time
             print("Processing {}...".format(file))
             start_time = time.time()
@@ -175,8 +169,8 @@ def main(args):
 
             # Finish processing file
             end_time = time.time()
-            print("Finish processing {}, time taken: {} seconds.\n\n".format(
-                fullFile, end_time-start_time))
+            print("Finish processing {} comments from the {}, time taken: {} seconds.\n\n".format(
+                args.max, file, end_time-start_time))
 
     fout = open(args.output, 'w')
     fout.write(json.dumps(allOutput))
@@ -190,7 +184,7 @@ if __name__ == "__main__":
     parser.add_argument(
         "-o", "--output", help="Directs the output to a filename of your choice", required=True)
     parser.add_argument(
-        "--max", help="The maximum number of comments to read from each file", default=2)
+        "--max", type=int, help="The maximum number of comments to read from each file", default=1)
     parser.add_argument(
         "--a1_dir", help="The directory for A1. Should contain subdir data. Defaults to the directory for A1 on cdf.", default='/u/cs401/A1')
 
@@ -202,4 +196,5 @@ if __name__ == "__main__":
 
     # python3 a1_preproc.py 1003002396 -o preproc.json --a1_dir /Users/joanna.zyz/CSC401Assignments/CSC401A1/
     indir = os.path.join(args.a1_dir, 'data')
+    # abbrev_path = os.path.join(args.a1_dir, 'wordlists/abbrev.english')
     main(args)

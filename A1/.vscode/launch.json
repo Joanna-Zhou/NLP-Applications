@@ -2,15 +2,20 @@
     "version": "0.2.0",
     "configurations": [
         {
-            "name": "Python: Current File",
+            "name": "Debug: a1_preproc",
             "type": "python",
             "request": "launch",
-            "program": "${file}",
-            "cwd": "code"
+            "program": "a1_preproc.py",
+            "cwd": "code",
             "console": "integratedTerminal",
             "args": [
                 "1003002396",
-                "--output", "preproc.json",
+                "--output",
+                "preproc.json",
+                "--max",
+                "1",
+                "--a1_dir",
+                "/Users/joanna.zyz/CSC401Assignments/CSC401A1/"
             ]
         }
     ]
