@@ -26,6 +26,15 @@ StopWords = open(StopWords_path, 'r')
 StopWords = StopWords.read().split('\n')
 
 
+def print_current(comment, step, note=''):
+    """
+    Prints the current comments for debuging
+    """
+    if note != '':
+        note = ' ('+ note +')'
+    print("Step {}{}: \n{}\n".format(step, note, comment))
+
+
 def preproc1( comment , steps=range(1,11)):
     ''' This function pre-processes a single comment
 
@@ -36,20 +45,20 @@ def preproc1( comment , steps=range(1,11)):
     Returns:
         modComm : string, the modified comment
     '''
-    # Finishing flags
-    step6, step8 = False, False
+    # modComm = ''
+    full_preproc = True # Other preprocessing steps like punctuation splitting, etc.
+    print_current(comment, 0)
 
-    modComm = ''
     if 1 in steps:
         # Replace all newline characters with spaces
         comment = comment.replace('\n', '')
-        print_current(comment, 1)
+        # print_current(comment, 1)
 
     if 2 in steps:
         # Replace HTML character codes with their ASCII equivalent
         comment = html.unescape(comment) # Python3
         # comment = HTMLParser.HTMLParser().unescape(comment)  # Python2
-        print_current(comment, 2)
+        # print_current(comment, 2)
 
     if 3 in steps:
         # Remove all URLs (i.e., tokens beginning with http or www or are in the form or xxx.xxx.xxx).
@@ -58,23 +67,77 @@ def preproc1( comment , steps=range(1,11)):
             r'(?:(?:http|https):\/\/)?([-a-zA-Z0-9.]{2,256}\.[a-z]{2,4})\b(?:\/[-a-zA-Z0-9@:%_\+.~#?&//=]*)?', '', comment, flags=re.MULTILINE)
         comment = re.sub(r'http\S+', '', comment, flags=re.MULTILINE)
         comment = re.sub(r'www\S+', '', comment, flags=re.MULTILINE)
-        # comment = comment.replace('()', ' ')
-        # comment = comment.replace('[]', ' ')
-        print_current(comment, 3)
+
+        # Remove the remainders from the links
+        for replacement in ((' // ', ' '), ('()', ' '), ('[]', ' '), ('( )', ' '), ('[ ]', ' ')):
+            comment = comment.replace(*replacement)
+        # print_current(comment, 3)
 
     if 4 in steps:
         # Remove duplicate spaces between tokens.
         # Each token must now be separated by a single space.
+        comment = re.sub('\s{2,}', ' ', comment)
         # print_current(comment, 4)
-        pass
+
+    if full_preproc:
+        doc = re.compile("[\S]+").findall(comment)
+        ignore_list = abbrev + ['e.g.', 'i.e.']
+        comment = ''
+        for token in doc:
+            if not token in ignore_list:
+                token = re.sub(
+                    r"[\W]+|[\w']+|[!\"#$%&\(\)*+,-./:;<=>?@[\]^_`{|}~\\]+", lambda pat: pat.group(0)+' ', token)
+            comment += token
+        # print_current(comment, 4.5)
 
     # Note that 5, 6, 7 are performed with spaCy
     if 5 in steps:
         # Tagging: Tag each token with its part-of-speech.
         # A tagged token consists of a word, the `/' symbol, and the tag(e.g., dog/NN).
-        print('TODO')
+    
+        # doc = nlp(comment)
+        # comment = ''
+        # for token in doc:
+        #     # print(token.text, token.tag_, '\n')
+        #     comment += str(token.text) + '/' + token.tag_ + ' '
+        # print_current(comment, 5.1)
+            
+        # Method 2: useing regex s.t. grouped punctuations aren't separately tagged
+        doc = re.compile("[\S]+").findall(comment)
+        doc = spacy.tokens.Doc(nlp.vocab, words=doc)
+        doc = nlp.tagger(doc)
+        comment = ''
+        for token in doc:
+            comment += str(token.text) + '/' + token.tag_ + ' '
+        print_current(comment, 5)
+
     if 6 in steps:
-        print('TODO')
+        # Lemmatization: Replace the token itself with the “token.lemma”.
+        # E.g., words/NNS becomes word/NNS.
+        # If the lemma begins with a dash (`-') when the token doesn't (e.g., -PRON- for I）, just keep the token.
+        doc = comment.split()
+        comment = ''
+        for tokenWithTag in doc:
+            token = tokenWithTag.split('/')[0]
+            if token != '':
+                tokenInfo = nlp(token)[0]
+                if tokenInfo.lemma_.startswith('-') and not token.startswith('-'):
+                    comment += token + '/' + tokenInfo.tag_ + ' '
+                else:
+                    comment += tokenInfo.lemma_ + '/' + tokenInfo.tag_ + ' '
+            else:
+                comment += tokenWithTag + ' '
+        print_current(comment, 6)
+        
+        # doc = re.compile("([\w]+|[\W]+)/(?:[\w]+|[\W]+)").findall(comment)
+        # doc = spacy.tokens.Doc(nlp.vocab, words=doc)
+        # doc = nlp.tagger(doc)
+        # for i in range(doc.__len__()):
+        #     if str(doc[i]) in comment and doc[i].lemma_[0] != '-':
+        #         comment = re.sub(
+        #             re.escape(str(doc[i])), doc[i].lemma_, comment)
+        # print_current(comment, 6)
+
     if 7 in steps:
         print('TODO')
     if 8 in steps:
@@ -84,30 +147,31 @@ def preproc1( comment , steps=range(1,11)):
     if 10 in steps:
         print('TODO')
 
+    modComm = comment
     return modComm
 
 
 
 def main( args ):
     allOutput = []
-    
+
     # Debug settings
     debug = True # flag for debugging
     debug_with_debug_text = True
-    debug_text = "THIS  IS  WHY  ESPN  IS  DYING. \n\nhttp: // www.foxnews.com/entertainment/2017/02/15/espn-sued-for-wrongful-termination-by-announcer-after-venus-williams-match-call.html \nSOCIAL JUSTICE, PC CULTURE, AND POLITICS ALL FUCK OFF FROM MY SPORTS!!!\n\n\"When all else fails, go on their subreddit &amp; downvote all of the comments to show them our feelings &amp; hide the truth!\" I'm not even really convinced he lied to Pence, versus was asked to lie to the public to downplay the Russia propaganda.  But as the facts now don't align with the official story, someone had to fall on their sword.  OR... there is something more going on here behind the scenes.   At face value, this seems like something they could have weathered. \n\nOh it takes that long for EO to be made/reviewed?\n\nThat is the narrative on on / reee/politburo \n\[\"Because it's *obviously* just an alt right smear campaign or something...\"\](https: // imgur.com/HgrT8Qm)"
+    debug_text = "THIS IS  WHY      ESPN    IS  DYING. \n\nhttp: // www.foxnews.com/entertainment/2017/02/15/espn-sued-for-wrongful-termination-by-announcer-after-venus-williams-match-call.html \nSOCIAL JUSTICE, PC CULTURE, AND POLITICS ALL FUCK OFF FROM MY SPORTS!!!\n\n\"When all else fails, go on their subreddit &amp; downvote all of the comments to show them our feelings &amp; hide the truth!\" I'm not even really convinced he lied to Pence, versus was asked to lie to the public to downplay the Russia propaganda.  But as the facts now don't align with the official story, someone had to fall on their sword.  OR... there is something more going on here behind the scenes.   At face value, this seems like something they could have weathered. \n\nOh it takes that long for EO to be made/reviewed?\n\nThat is the narrative on on / reee/politburo \n\[\"Because it's *obviously* just an alt right smear campaign or something...\"\](https: // imgur.com/HgrT8Qm)"
     firstfile = True
-    
+
     if debug_with_debug_text:
         preproc1(debug_text)
-        return 
-    
+        return
+
     for subdir, dirs, files in os.walk(indir):
         for file in files:
             # For now, only process one file
-            if debug and not firstfile: 
+            if debug and not firstfile:
                 break
             firstfile = False
-            
+
             # Start recording time
             print("Processing {}...".format(file))
             start_time = time.time()
@@ -148,13 +212,6 @@ def main( args ):
     fout = open(args.output, 'w')
     fout.write(json.dumps(allOutput))
     fout.close()
-
-
-def print_current(comment, step):
-    """
-    Prints the current comments for debuging
-    """
-    print("At step {}: {}\n".format(step, comment))
 
 
 if __name__ == "__main__":
