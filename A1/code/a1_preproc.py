@@ -121,19 +121,20 @@ def main(args):
     allOutput = []
 
     # Debug settings
-    debug = True
-    debug_with_debug_text = False
-    debug_text = "THIS IS  WHY      ESPN    IS  DYING. \n\nhttp: // www.foxnews.com/entertainment/2017/02/15/espn-sued-for-wrongful-termination-by-announcer-after-venus-williams-match-call.html \nSOCIAL JUSTICE, PC CULTURE, AND POLITICS ALL FUCK OFF FROM MY SPORTS!!!\n\n\"When all else fails, go on their subreddit &amp; downvote all of the comments to show them our feelings &amp; hide the truth!\" I'm not even really convinced he lied to Pence, versus was asked to lie to the public to downplay the Russia propaganda.  But as the facts now don't align with the official story, someone had to fall on their sword.  OR... there is something more going on here behind the scenes.   At face value, this seems like something they could have weathered. \n\nOh it takes that long for EO to be made/reviewed?\n\nThat is the narrative on on / reee/politburo \n\[\"Because it's *obviously* just an alt right smear campaign or something...\"\](https: // imgur.com/HgrT8Qm)"
+    debug = False
+    # debug_with_debug_text = False
+    # debug_text = "THIS IS  WHY      ESPN    IS  DYING. \n\nhttp: // www.foxnews.com/entertainment/2017/02/15/espn-sued-for-wrongful-termination-by-announcer-after-venus-williams-match-call.html \nSOCIAL JUSTICE, PC CULTURE, AND POLITICS ALL FUCK OFF FROM MY SPORTS!!!\n\n\"When all else fails, go on their subreddit &amp; downvote all of the comments to show them our feelings &amp; hide the truth!\" I'm not even really convinced he lied to Pence, versus was asked to lie to the public to downplay the Russia propaganda.  But as the facts now don't align with the official story, someone had to fall on their sword.  OR... there is something more going on here behind the scenes.   At face value, this seems like something they could have weathered. \n\nOh it takes that long for EO to be made/reviewed?\n\nThat is the narrative on on / reee/politburo \n\[\"Because it's *obviously* just an alt right smear campaign or something...\"\](https: // imgur.com/HgrT8Qm)"
 
-    if debug_with_debug_text:
-        preproc1(debug_text)
-        return
+    # if debug_with_debug_text:
+    #     preproc1(debug_text)
+    #     return
 
     for subdir, dirs, files in os.walk(indir):
         print("Processing files...")
         for file in files:
-            if debug and file != 'Left':
-                continue
+            if debug:
+                if file != 'Left':
+                    continue
 
             # Start recording time
             print("Processing {}...".format(file))
@@ -151,8 +152,7 @@ def main(args):
                 j = json.loads(line)
 
                 # TODO: choose to retain fields from those lines that are relevant to you
-                relevant_fields = [
-                    'body', 'controversiality', 'id', 'score']  # 'author'
+                relevant_fields = ['body', 'id']  # 'author', 'controversiality', 'score'
                 j = ({key: j[key] for key in relevant_fields})
 
                 # TODO: add a field to each selected line called 'cat' with the value of 'file' (e.g., 'Alt', 'Right', ...)
@@ -184,7 +184,7 @@ if __name__ == "__main__":
     parser.add_argument(
         "-o", "--output", help="Directs the output to a filename of your choice", required=True)
     parser.add_argument(
-        "--max", type=int, help="The maximum number of comments to read from each file", default=1)
+        "--max", type=int, help="The maximum number of comments to read from each file", default=10000)
     parser.add_argument(
         "--a1_dir", help="The directory for A1. Should contain subdir data. Defaults to the directory for A1 on cdf.", default='/u/cs401/A1')
 

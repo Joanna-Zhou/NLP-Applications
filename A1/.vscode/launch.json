@@ -2,6 +2,22 @@
     "version": "0.2.0",
     "configurations": [
         {
+            "name":"Python: a1_extractFeatures",
+            "type":"python",
+            "request":"launch",
+            "program":"a1_extractFeatures.py",
+            "console":"integratedTerminal",
+            "cwd": "code",
+            "args": [
+                "--input",
+                "preproc.json",
+                "--output",
+                "feats.npz",
+                "--a1_dir",
+                "/Users/joanna.zyz/CSC401Assignments/CSC401A1/"
+            ]
+        },
+        {
             "name": "Debug: a1_preproc",
             "type": "python",
             "request": "launch",
