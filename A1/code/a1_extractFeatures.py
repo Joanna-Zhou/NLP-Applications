@@ -310,3 +310,5 @@ if __name__ == "__main__":
 # python3 a1_extractFeatures.py -i preproc_small.json -o feats_small.npz --a1_dir /Users/joanna.zyz/CSC401Assignments/CSC401A1/
 # python3 a1_extractFeatures.py -i preproc_medium.json -o feats_medium.npz --a1_dir /Users/joanna.zyz/CSC401Assignments/CSC401A1/
 # python3 a1_extractFeatures.py -i preproc.json -o feats.npz --a1_dir /Users/joanna.zyz/CSC401Assignments/CSC401A1/
+
+# python3 a1_extractFeatures.py -i preproc1.json -o feats1.npz --a1_dir /Users/joanna.zyz/CSC401Assignments/CSC401A1/

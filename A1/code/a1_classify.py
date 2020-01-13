@@ -193,6 +193,8 @@ def class32(output_dir, X_train, X_test, y_train, y_test, iBest):
     X_1k, y_1k = X_train[:1000], y_train[:1000]
     return (X_1k, y_1k)
 
+def model_selection(iBest):
+    
 
 def class33(output_dir, X_train, X_test, y_train, y_test, i, X_1k, y_1k):
     ''' This function performs experiment 3.3
@@ -209,7 +211,23 @@ def class33(output_dir, X_train, X_test, y_train, y_test, i, X_1k, y_1k):
     '''
     print('Processing Section 3.3...')
 
-    with open(f"{output_dir}/a1_3.3.txt", "w") as outf:
+    print('++++++++++++++ Section 3.3.1: p-values ++++++++++++++')
+    k_feats = [5, 50]
+    pvalues = np.zeros((2,)) # one slot each, for k = 5 and 50
+
+    # TODO: check if there's supposed to be that 0
+    for i, k in enumerate(k_feats):
+        selector = SelectKBest(f_classif, k)
+        X_new = selector.fit_transform(X_train, y_train)
+        pp = selector.pvalues_
+        pp_idx = selector.get_support(indices=True)
+        print(pp_idx)
+        p_values = pp[pp_idx]
+        
+        # TODO: Check Piazza 
+        with open(f"{output_dir}/a1_3.3.txt", "a+") as outf:
+            outf.write(f'{k} p-values: {[round(pval, 4) for pval in p_values]}\n')
+
 
         # Prepare the variables with corresponding names, then uncomment
         # this, so it writes them to outf.
@@ -291,8 +309,9 @@ if __name__ == "__main__":
     open(f"{output_dir}/a1_3.3.txt", "w+").close()
     # iBest = class31(output_dir, X_train, X_test, y_train, y_test)
     iBest = 5
-    X_1k, y_1k = class32(output_dir, X_train, X_test, y_train, y_test, iBest)
-    # class33(X_train, X_test, y_train, y_test, iBest, X_1k, y_1k)
+    X_1k, y_1k = X_train[:1000], y_train[:1000]
+    # X_1k, y_1k = class32(output_dir, X_train, X_test, y_train, y_test, iBest)
+    class33(output_dir, X_train, X_test, y_train, y_test, iBest, X_1k, y_1k)
     # class34(filename, iBest)
 
     # python3 a1_classify.py -i feats_medium.npz -o classifier_output_mini

@@ -106,8 +106,13 @@ def preproc1(comment, steps=range(1, 5)):
         senttext = ''
         for token in doc:
             if token.text != '':
-                if token.lemma_.startswith('-') and not token.text.startswith('-'):
+                # Keep it if it is all cap
+                if len(re.compile("(^| )[A-Z]{3,}").findall(comment)) > 0:
                     senttext += token.text + '/' + token.tag_
+                # Keep it if it doesn't starts with - but its lemma does
+                elif token.lemma_.startswith('-') and not token.text.startswith('-'):
+                    senttext += token.text + '/' + token.tag_
+                # Otherwise replace it with its lemma
                 else:
                     senttext += token.lemma_ + '/' + token.tag_
             senttext += ' '
@@ -122,7 +127,7 @@ def main(args):
 
     # Debug settings
     debug = False
-    # debug_with_debug_text = False
+    # debug_with_debug_text = True
     # debug_text = "THIS IS  WHY      ESPN    IS  DYING. \n\nhttp: // www.foxnews.com/entertainment/2017/02/15/espn-sued-for-wrongful-termination-by-announcer-after-venus-williams-match-call.html \nSOCIAL JUSTICE, PC CULTURE, AND POLITICS ALL FUCK OFF FROM MY SPORTS!!!\n\n\"When all else fails, go on their subreddit &amp; downvote all of the comments to show them our feelings &amp; hide the truth!\" I'm not even really convinced he lied to Pence, versus was asked to lie to the public to downplay the Russia propaganda.  But as the facts now don't align with the official story, someone had to fall on their sword.  OR... there is something more going on here behind the scenes.   At face value, this seems like something they could have weathered. \n\nOh it takes that long for EO to be made/reviewed?\n\nThat is the narrative on on / reee/politburo \n\[\"Because it's *obviously* just an alt right smear campaign or something...\"\](https: // imgur.com/HgrT8Qm)"
 
     # if debug_with_debug_text:
@@ -194,6 +199,7 @@ if __name__ == "__main__":
         print("Error: If you want to read more than 200,272 comments per file, you have to read them all.")
         sys.exit(1)
 
+    # python3 a1_preproc.py 1003002396 -o preproc1.json --a1_dir /Users/joanna.zyz/CSC401Assignments/CSC401A1/
     # python3 a1_preproc.py 1003002396 -o preproc.json --a1_dir /Users/joanna.zyz/CSC401Assignments/CSC401A1/
     # python3 a1_preproc.py 1003002396 -o preproc_small.json --a1_dir /Users/joanna.zyz/CSC401Assignments/CSC401A1/ --max 1
     # python3 a1_preproc.py 1003002396 -o preproc_medium.json --a1_dir /Users/joanna.zyz/CSC401Assignments/CSC401A1/ --max 10
