@@ -176,17 +176,18 @@ def class32(output_dir, X_train, X_test, y_train, y_test, iBest):
 
     data_sizes = [1000, 5000, 10000, 15000, 20000]
     accuracies = np.zeros((5,))
+    
+    with open(f"{output_dir}/a1_3.2.txt", "a+") as outf:
 
-    for i, data_size in enumerate(data_sizes):
-        X_train_mini, y_train_mini = X_train[:i], y_train[:i]
-        X_test_mini, y_test_mini = X_test[:i], y_test[:i]
+        for i, data_size in enumerate(data_sizes):
+            X_train_mini, y_train_mini = X_train[:i], y_train[:i]
+            X_test_mini, y_test_mini = X_test[:i], y_test[:i]
 
-        clf.fit(X_train_mini, y_train_mini)
-        y_pred_mini = clf.predict(X_test_mini)
-        C = confusion_matrix(y_test_mini, y_pred_mini)
-        accuracies[i] = accuracy(C)
+            clf.fit(X_train_mini, y_train_mini)
+            y_pred_mini = clf.predict(X_test_mini)
+            C = confusion_matrix(y_test_mini, y_pred_mini)
+            accuracies[i] = accuracy(C)
 
-        with open(f"{output_dir}/a1_3.2.txt", "a+") as outf:
             # For each number of training examples, compute results and write the following output:
             outf.write(f'{num_train}: {accuracies[i]:.4f}\n'))
 
@@ -207,7 +208,7 @@ def class33(output_dir, X_train, X_test, y_train, y_test, i, X_1k, y_1k):
        X_1k: numPy array, just 1K rows of X_train (from task 3.2)
        y_1k: numPy array, just 1K rows of y_train (from task 3.2)
     '''
-    print('Processing Section 3.3')
+    print('Processing Section 3.3...')
 
     with open(f"{output_dir}/a1_3.3.txt", "w") as outf:
         # Prepare the variables with corresponding names, then uncomment

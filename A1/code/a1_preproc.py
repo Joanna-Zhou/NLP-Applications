@@ -44,7 +44,7 @@ def preproc1(comment, steps=range(1, 5)):
     full_preproc = True
     if full_preproc:
         ignore_list = abbrev + ['e.g.', 'i.e.']
-    print_current(comment, 0, 'original')
+    # print_current(comment, 0, 'original')
 
     modComm = comment
     if 1 in steps:  # replace newlines with spaces
@@ -113,7 +113,7 @@ def preproc1(comment, steps=range(1, 5)):
             senttext += ' '
         modComm += senttext + '\n'
 
-    print_current(modComm, 5, 'final')
+    # print_current(modComm, 5, 'final')
     return modComm
 
 
