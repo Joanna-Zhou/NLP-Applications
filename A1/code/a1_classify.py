@@ -64,8 +64,8 @@ def evaluate(i, C, output_dir):
     acc, rec, prec = accuracy(C), recall(C), precision(C)
 
     # Print
-    print("Model {}. {}:\nAccuracy: {}\nAverage recall: {}\nAverage precision: {}\n".format(
-        i, classifier_name, acc, rec.mean(), prec.mean()))
+    print("Model {}. {}:\nAccuracy: {}\nAverage recall: {}\nAverage precision: {}\nConfusion matrix:\n{}".format(
+        i, classifier_name, acc, rec.mean(), prec.mean(), C))
 
     # Txt log
     with open(f"{output_dir}/a1_3.1.txt", "a+") as outf:
@@ -176,20 +176,19 @@ def class32(output_dir, X_train, X_test, y_train, y_test, iBest):
 
     data_sizes = [1000, 5000, 10000, 15000, 20000]
     accuracies = np.zeros((5,))
-    
+
     with open(f"{output_dir}/a1_3.2.txt", "a+") as outf:
 
         for i, data_size in enumerate(data_sizes):
-            X_train_mini, y_train_mini = X_train[:i], y_train[:i]
-            X_test_mini, y_test_mini = X_test[:i], y_test[:i]
+            X_train_mini, y_train_mini = X_train[:data_size], y_train[:data_size]
 
             clf.fit(X_train_mini, y_train_mini)
-            y_pred_mini = clf.predict(X_test_mini)
-            C = confusion_matrix(y_test_mini, y_pred_mini)
+            y_pred = clf.predict(X_test)
+            C = confusion_matrix(y_test, y_pred)
             accuracies[i] = accuracy(C)
 
             # For each number of training examples, compute results and write the following output:
-            outf.write(f'{num_train}: {accuracies[i]:.4f}\n'))
+            outf.write(f'{data_size}: {accuracies[i]:.4f}\n')
 
     X_1k, y_1k = X_train[:1000], y_train[:1000]
     return (X_1k, y_1k)
@@ -211,6 +210,7 @@ def class33(output_dir, X_train, X_test, y_train, y_test, i, X_1k, y_1k):
     print('Processing Section 3.3...')
 
     with open(f"{output_dir}/a1_3.3.txt", "w") as outf:
+
         # Prepare the variables with corresponding names, then uncomment
         # this, so it writes them to outf.
 
@@ -270,7 +270,7 @@ if __name__ == "__main__":
     # print(recall(C_test).mean())
     # print("++++++++++++++++++++++++++++++++++++++++++++++")
 
-    # python3 a1_classify.py -i feats_medium.npz -o classifier_output
+
 
 
     # TODO: load data and split into train and test.
@@ -289,7 +289,11 @@ if __name__ == "__main__":
     open(f"{output_dir}/a1_3.1.txt", "w+").close()
     open(f"{output_dir}/a1_3.2.txt", "w+").close()
     open(f"{output_dir}/a1_3.3.txt", "w+").close()
-    iBest = class31(output_dir, X_train, X_test, y_train, y_test)
-    # X_1k, y_1k = class32(X_train, X_test, y_train, y_test, iBest)
+    # iBest = class31(output_dir, X_train, X_test, y_train, y_test)
+    iBest = 5
+    X_1k, y_1k = class32(output_dir, X_train, X_test, y_train, y_test, iBest)
     # class33(X_train, X_test, y_train, y_test, iBest, X_1k, y_1k)
     # class34(filename, iBest)
+
+    # python3 a1_classify.py -i feats_medium.npz -o classifier_output_mini
+    # python3 a1_classify.py -i feats.npz -o classifier_output
