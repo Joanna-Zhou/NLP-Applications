@@ -209,7 +209,7 @@ def setup(dir):
     Arguments:
         dir {String} -- Path to A1 directory
     """
-    print("Seting up gloval dictionaries...")
+    print("\nSeting up global dictionaries...")
 
     global BGL, WARRINGER, LIWC
     BGL, WARRINGER, LIWC = {}, {}, {}
@@ -280,12 +280,12 @@ def main(args):
 
     setup(args.a1_dir)
 
-    print("Processing data...")
+    print("\nProcessing data...")
     for i in range(data_length):
         feats[i] = extract(data[i])
         if i % checkpoint == 0:
             print("Processing the {}th data out of {}.".format(
-                (i*checkpoint+1), data_length))
+                i+1, data_length))
             # if debug:
             #     print(feats[i])
 
@@ -309,3 +309,4 @@ if __name__ == "__main__":
 
 # python3 a1_extractFeatures.py -i preproc_small.json -o feats_small.npz --a1_dir /Users/joanna.zyz/CSC401Assignments/CSC401A1/
 # python3 a1_extractFeatures.py -i preproc_medium.json -o feats_medium.npz --a1_dir /Users/joanna.zyz/CSC401Assignments/CSC401A1/
+# python3 a1_extractFeatures.py -i preproc.json -o feats.npz --a1_dir /Users/joanna.zyz/CSC401Assignments/CSC401A1/
