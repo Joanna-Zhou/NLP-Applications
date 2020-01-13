@@ -2,7 +2,21 @@
     "version": "0.2.0",
     "configurations": [
         {
-            "name":"Python: a1_extractFeatures",
+            "name": "Debug: a1_classify",
+            "type": "python",
+            "request": "launch",
+            "program": "a1_classify.py",
+            "console": "integratedTerminal",
+            "cwd": "code",
+            "args": [
+                "--input",
+                "feats_medium.npz",
+                "--output_dir",
+                "classifier_output"
+            ]
+        },
+        {
+            "name":"Debug: a1_extractFeatures",
             "type":"python",
             "request":"launch",
             "program":"a1_extractFeatures.py",

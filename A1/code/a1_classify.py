@@ -30,18 +30,56 @@ def recall(C):
     ''' Compute recall given Numpy array confusion matrix C. Returns a list of floating point values '''
     correct = C.diagonal()
     total_per_row = np.sum(C, axis=1)
-    return correct / total_per_row
+    recall = np.zeros(correct.shape)
+    for i, total in np.ndenumerate(total_per_row):
+        if total != 0.:
+            recall[i] = correct[i]/total
+    return recall
+
 
 def precision(C):
     ''' Compute precision given Numpy array confusion matrix C. Returns a list of floating point values '''
     correct = C.diagonal()
     total_per_col = np.sum(C, axis=0)
-    return correct / total_per_col
+    precision = np.zeros(correct.shape)
+    for i, total in np.ndenumerate(total_per_col):
+        if total != 0.:
+            precision[i] = correct[i]/total
+    return precision
 
+
+
+def evaluate(i, C, output_dir):
+    """Compute, print, and write the resultes into the csv file
+
+    Arguments:
+        i {int} -- index of model
+        C {Numpy array} -- the confusion matrix
+        output_dir {string} -- path of directory to write output to
+
+    Returns:
+        accuracy {float} -- the accuracy, used to find the best model
+    """
+    classifier_name = MODELS[i]
+    acc, rec, prec = accuracy(C), recall(C), precision(C)
+
+    # Print
+    print("Model {}. {}:\nAccuracy: {}\nAverage recall: {}\nAverage precision: {}\n".format(
+        i, classifier_name, acc, rec.mean(), prec.mean()))
+
+    # Txt log
+    with open(f"{output_dir}/a1_3.1.txt", "a+") as outf:
+        # For each classifier, compute results and write the following output:
+        outf.write(f'Results for {classifier_name}:\n')  # Classifier name
+        outf.write(f'\tAccuracy: {acc:.4f}\n')
+        outf.write(f'\tRecall: {[round(item, 4) for item in rec]}\n')
+        outf.write(f'\tPrecision: {[round(item, 4) for item in prec]}\n')
+        outf.write(f'\tConfusion Matrix: \n{C}\n\n')
+    return acc
 
 def class31(output_dir, X_train, X_test, y_train, y_test):
     ''' This function performs experiment 3.1
-    
+
     Parameters
        output_dir: path of directory to write output to
        X_train: NumPy array, with the selected training features
@@ -49,33 +87,75 @@ def class31(output_dir, X_train, X_test, y_train, y_test):
        y_train: NumPy array, with the selected training classes
        y_test: NumPy array, with the selected testing classes
 
-    Returns:      
+    Returns:
        i: int, the index of the supposed best classifier
     '''
-    print('TODO Section 3.1')
+    print('Processing section 3.1...')
+    global MODELS
+    MODELS = {1: "SGDClassifier",
+              2: "GaussianNB",
+              3: "RandomForestClassifier",
+              4: "MLPClassifier",
+              5: "AdaBoostClassifier"}
+    accuracies = np.zeros((5,))
+    index = 1
 
-    with open(f"{output_dir}/a1_3.1.txt", "w") as outf:
-        # For each classifier, compute results and write the following output:
-        #     outf.write(f'Results for {classifier_name}:\n')  # Classifier name
-        #     outf.write(f'\tAccuracy: {accuracy:.4f}\n')
-        #     outf.write(f'\tRecall: {[round(item, 4) for item in recall]}\n')
-        #     outf.write(f'\tPrecision: {[round(item, 4) for item in precision]}\n')
-        #     outf.write(f'\tConfusion Matrix: \n{conf_matrix}\n\n')
-        pass
+    # Start training
+    print("+++++ {}. +++++++++++++++++++++++++++++++++++".format(index))
+    clf = SGDClassifier()
+    clf.fit(X_train, y_train)
+    y_pred = clf.predict(X_test)
+    C = confusion_matrix(y_test, y_pred)
+    accuracies[index-1] = evaluate(index, C, output_dir)
+    index += 1
 
+    print("+++++ {}. +++++++++++++++++++++++++++++++++++".format(index))
+    clf = GaussianNB()
+    clf.fit(X_train, y_train)
+    y_pred = clf.predict(X_test)
+    C = confusion_matrix(y_test, y_pred)
+    accuracies[index-1] = evaluate(index, C, output_dir)
+    index += 1
+
+    print("+++++ {}. +++++++++++++++++++++++++++++++++++".format(index))
+    clf = RandomForestClassifier(n_estimators=10, max_depth=5)
+    clf.fit(X_train, y_train)
+    y_pred = clf.predict(X_test)
+    C = confusion_matrix(y_test, y_pred)
+    accuracies[index-1] = evaluate(index, C, output_dir)
+    index += 1
+
+    print("+++++ {}. +++++++++++++++++++++++++++++++++++".format(index))
+    clf = MLPClassifier(alpha=0.05)
+    clf.fit(X_train, y_train)
+    y_pred = clf.predict(X_test)
+    C = confusion_matrix(y_test, y_pred)
+    accuracies[index-1] = evaluate(index, C, output_dir)
+    index += 1
+
+    print("+++++ {}. +++++++++++++++++++++++++++++++++++".format(index))
+    clf = AdaBoostClassifier()
+    clf.fit(X_train, y_train)
+    y_pred = clf.predict(X_test)
+    C = confusion_matrix(y_test, y_pred)
+    accuracies[index-1] = evaluate(index, C, output_dir)
+    index += 1
+
+    # Return the model index giving the best results
+    iBest = np.argmax(accuracies) + 1
     return iBest
 
 
 def class32(output_dir, X_train, X_test, y_train, y_test, iBest):
     ''' This function performs experiment 3.2
-    
+
     Parameters:
        output_dir: path of directory to write output to
        X_train: NumPy array, with the selected training features
        X_test: NumPy array, with the selected testing features
        y_train: NumPy array, with the selected training classes
        y_test: NumPy array, with the selected testing classes
-       iBest: int, the index of the supposed best classifier (from task 3.1)  
+       iBest: int, the index of the supposed best classifier (from task 3.1)
 
     Returns:
        X_1k: numPy array, just 1K rows of X_train
@@ -94,14 +174,14 @@ def class32(output_dir, X_train, X_test, y_train, y_test, iBest):
 
 def class33(output_dir, X_train, X_test, y_train, y_test, i, X_1k, y_1k):
     ''' This function performs experiment 3.3
-    
+
     Parameters:
        output_dir: path of directory to write output to
        X_train: NumPy array, with the selected training features
        X_test: NumPy array, with the selected testing features
        y_train: NumPy array, with the selected training classes
        y_test: NumPy array, with the selected testing classes
-       i: int, the index of the supposed best classifier (from task 3.1)  
+       i: int, the index of the supposed best classifier (from task 3.1)
        X_1k: numPy array, just 1K rows of X_train (from task 3.2)
        y_1k: numPy array, just 1K rows of y_train (from task 3.2)
     '''
@@ -124,17 +204,17 @@ def class33(output_dir, X_train, X_test, y_train, y_test, i, X_1k, y_1k):
 
 def class34(output_dir, X_train, X_test, y_train, y_test, i):
     ''' This function performs experiment 3.4
-    
+
     Parameters
        output_dir: path of directory to write output to
        X_train: NumPy array, with the selected training features
        X_test: NumPy array, with the selected testing features
        y_train: NumPy array, with the selected training classes
        y_test: NumPy array, with the selected testing classes
-       i: int, the index of the supposed best classifier (from task 3.1)  
+       i: int, the index of the supposed best classifier (from task 3.1)
         '''
     print('TODO Section 3.4')
-    
+
     with open(f"{output_dir}/a1_3.2.txt", "w") as outf:
         # Prepare kfold_accuracies, then uncomment this, so it writes them to outf.
         # outf.write(f'Kfold Accuracies: {[round(acc, 4) for acc in kfold_accuracies]}\n')
@@ -151,7 +231,7 @@ if __name__ == "__main__":
         help="The directory to write a1_3.X.txt files to.",
         default=os.path.dirname(os.path.dirname(__file__)))
     args = parser.parse_args()
-    
+
     # print("Testing confusion matrix computations+++++++++")
     # C_test = np.array(
     #     [[5825,    1,   49,   23,    7,   46,   30,   12,   21,   26],
@@ -167,14 +247,26 @@ if __name__ == "__main__":
     # print(recall(C_test).mean())
     # print("++++++++++++++++++++++++++++++++++++++++++++++")
 
-    # python3 a1_classify.py -i feats_medium.npz -o /classifier_output/
+    # python3 a1_classify.py -i feats_medium.npz -o classifier_output
 
 
-    # # TODO: load data and split into train and test.
-    # filename = args.input
-    # (X_train, X_test, y_train, y_test, iBest) = class31(filename)
+    # TODO: load data and split into train and test.
+    np.random.seed(999)
+    input_file, output_dir = args.input, args.output_dir
+    npz = np.load(input_file)
+    feats = npz[npz.files[0]]
 
-    # # TODO : complete each classification experiment, in sequence.
+    # X: the first 173 columns in the feature array, y: the last one
+    X, y = feats[:, :-1], feats[:, -1]
+    (X_train, X_test, y_train, y_test) = train_test_split(
+        X, y, test_size=0.2)
+
+    # TODO : complete each classification experiment, in sequence.
+    # Create/clean up the files
+    open(f"{output_dir}/a1_3.1.txt", "w+").close()
+    open(f"{output_dir}/a1_3.2.txt", "w+").close()
+    open(f"{output_dir}/a1_3.3.txt", "w+").close()
+    iBest = class31(output_dir, X_train, X_test, y_train, y_test)
     # X_1k, y_1k = class32(X_train, X_test, y_train, y_test, iBest)
     # class33(X_train, X_test, y_train, y_test, iBest, X_1k, y_1k)
     # class34(filename, iBest)
