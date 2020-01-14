@@ -7,9 +7,12 @@ from sklearn.feature_selection import f_classif
 from sklearn.feature_selection import SelectKBest
 from sklearn.metrics import confusion_matrix
 from sklearn.model_selection import train_test_split
+from sklearn.model_selection import KFold
 from sklearn.neural_network import MLPClassifier
 from sklearn.naive_bayes import GaussianNB
 from sklearn.linear_model import SGDClassifier
+from scipy import stats
+
 
 # Added libraries
 import sys
@@ -156,9 +159,9 @@ def model_selection(iBest):
         function -- the clf model
     """
     if iBest == 1:
-        return LinearSVC()
+        return SGDClassifier()
     elif iBest == 2:
-        return SVC(gamma=2, max_iter=1000)
+        return GaussianNB()
     elif iBest == 3:
         return RandomForestClassifier(n_estimators=10, max_depth=5)
     elif iBest == 4:
@@ -271,7 +274,7 @@ def class33(output_dir, X_train, X_test, y_train, y_test, i, X_1k, y_1k):
         outf.write(f'Accuracy for 1k: {accuracy_1k:.4f}\n')
         outf.write(f'Accuracy for full dataset: {accuracy_full:.4f}\n')
 
-    print('++++++++++++++ Section 3.3.3: intersection +++++++++++')
+    print('++++++++++++++ Section 3.3.3 & 4: intersection ++++++++')
     clf = model_selection(iBest)
     selector = SelectKBest(f_classif, k=5)
 
@@ -285,18 +288,27 @@ def class33(output_dir, X_train, X_test, y_train, y_test, i, X_1k, y_1k):
     # Get their intersection
     feature_intersection = [idx for idx in pp_idx_1K_5 if idx in set(pp_idx_full_5)]
 
-    print("Features from 1K: {}\nFeatures from full: {}\nIntersection:{}".format(pp_idx_1K_5, pp_idx_full_5, feature_intersection))
+    print("Features from 1K: \t{}\nFeatures from full: \t{}\nIntersection: \t\t{}".format(pp_idx_1K_5, pp_idx_full_5, feature_intersection))
 
     with open(f"{output_dir}/a1_3.3.txt", "a+") as outf:
         outf.write(f'Chosen feature intersection: {feature_intersection}\n')
         outf.write(f'Top-5 at higher: {pp_idx_full_5}\n')
-    
+
     # TODO: Following the above, answer the following questions:
     # (a) Provide names for the features found in the above intersection of the top k = 5 features. If any,
     # provide a possible explanation as to why these features may be especially useful.
     # (b) Are p-values generally higher or lower given more or less data? Why or why not?
     # (c) Name the top 5 features chosen for the 32K training case. Hypothesize as to why those particular
     # features might dierentiate the classes.
+
+
+def class34_helper(clf, X_train, X_test, y_train, y_test):
+    """ Returns the accuracy given training/testing data and classifier
+    """
+    clf.fit(X_train, y_train)
+    y_pred = clf.predict(X_test)
+    C = confusion_matrix(y_test, y_pred)
+    return accuracy(C)
 
 
 def class34(output_dir, X_train, X_test, y_train, y_test, i):
@@ -310,14 +322,56 @@ def class34(output_dir, X_train, X_test, y_train, y_test, i):
        y_test: NumPy array, with the selected testing classes
        i: int, the index of the supposed best classifier (from task 3.1)
         '''
-    print('TODO Section 3.4')
+    print('Processing Section 3.4...')
+
+    X, y = np.concatenate((X_train, X_test)), np.concatenate((y_train, y_test))
+    kf = KFold(n_splits=5, shuffle=True)
+    accuracies = np.zeros((5, 5)) # 5 folds * 5 models
+    ith_fold = 0
+
+    for train_idx, test_idx in kf.split(X):
+        print('Computing accuracies for the {}th fold.'.format(ith_fold+1))
+        XX_train, XX_test = X[train_idx], X[test_idx]
+        yy_train, yy_test = y[train_idx], y[test_idx]
+
+        accuracies[ith_fold][0] = class34_helper(
+            model_selection(1), XX_train, XX_test, yy_train, yy_test)
+        accuracies[ith_fold][1] = class34_helper(
+            model_selection(2), XX_train, XX_test, yy_train, yy_test)
+        accuracies[ith_fold][2] = class34_helper(
+            model_selection(3), XX_train, XX_test, yy_train, yy_test)
+        accuracies[ith_fold][3] = class34_helper(
+            model_selection(4), XX_train, XX_test, yy_train, yy_test)
+        accuracies[ith_fold][4] = class34_helper(
+            model_selection(5), XX_train, XX_test, yy_train, yy_test)
+
+        ith_fold += 1
+
+    print('Finish fold accuracies:\n{}'.format(accuracies))
+
+    p_values = [] # should be length 4 at the end
+    kfold_accuracies = []
+    best_idx = iBest - 1 # iBest is from 1 to 5, but idx is from 0 to 4
+    best_col = accuracies[:, best_idx]
+
+    for model_idx in range(5):
+        model_col = accuracies[:, model_idx]
+
+        # Get p value
+        if model_idx != best_idx:
+            S = stats.ttest_rel(model_col, best_col)
+            p_values.append(S.pvalue)
+
+        # Get mean accuracy
+        kfold_accuracies.append(np.mean(model_col))
+
+    print('Finish fold comparicons:\np values:{}\nAverage accuracies of each model:\n{}'.format(p_values, kfold_accuracies))
 
     with open(f"{output_dir}/a1_3.2.txt", "w") as outf:
-        # Prepare kfold_accuracies, then uncomment this, so it writes them to outf.
-        # outf.write(f'Kfold Accuracies: {[round(acc, 4) for acc in kfold_accuracies]}\n')
-        # outf.write(f'p-values: {[round(pval, 4) for pval in p_values]}\n')
+        outf.write(f'Kfold Accuracies: {[round(acc, 4) for acc in kfold_accuracies]}\n')
+        outf.write(f'p-values: {[round(pval, 4) for pval in p_values]}\n')
         pass
-
+    # TODO: ask "Actually I just tested on both and the one with all the consecutive (>=3) capital letters remaining capitalized (i,e, not replaced by their lemmas) gives slightly higher accuracies with the classifiers - if that's the case, do I have the freedom to keep it that way? Or should I lemmatize them regardless? "
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
@@ -366,11 +420,11 @@ if __name__ == "__main__":
 
     # iBest = class31(output_dir, X_train, X_test, y_train, y_test)
     iBest = 5
-    X_1k, y_1k = X_train[:1000], y_train[:1000]
+    # X_1k, y_1k = X_train[:1000], y_train[:1000]
     # X_1k, y_1k = class32(output_dir, X_train, X_test, y_train, y_test, iBest)
-    class33(output_dir, X_train, X_test, y_train, y_test, iBest, X_1k, y_1k)
-    # class34(filename, iBest)
+    # class33(output_dir, X_train, X_test, y_train, y_test, iBest, X_1k, y_1k)
+    class34(output_dir, X_train, X_test, y_train, y_test, iBest)
 
     # python3 a1_classify.py -i feats_medium.npz -o classifier_output_mini
-    # python3 a1_classify.py -i feats.npz -o classifier_output
+    # python3 a1_classify.py -i feats.npz -o classifier_output_mini
     # python3 a1_classify.py -i feats1.npz -o classifier_output
