@@ -414,15 +414,15 @@ if __name__ == "__main__":
 
     # TODO : complete each classification experiment, in sequence.
     # Create/clean up the files
-    # open(f"{output_dir}/a1_3.1.txt", "w+").close()
+    open(f"{output_dir}/a1_3.1.txt", "w+").close()
     open(f"{output_dir}/a1_3.2.txt", "w+").close()
     open(f"{output_dir}/a1_3.3.txt", "w+").close()
 
-    # iBest = class31(output_dir, X_train, X_test, y_train, y_test)
-    iBest = 5
-    # X_1k, y_1k = X_train[:1000], y_train[:1000]
-    # X_1k, y_1k = class32(output_dir, X_train, X_test, y_train, y_test, iBest)
-    # class33(output_dir, X_train, X_test, y_train, y_test, iBest, X_1k, y_1k)
+    iBest = class31(output_dir, X_train, X_test, y_train, y_test)
+    # iBest = 5
+    X_1k, y_1k = X_train[:1000], y_train[:1000]
+    X_1k, y_1k = class32(output_dir, X_train, X_test, y_train, y_test, iBest)
+    class33(output_dir, X_train, X_test, y_train, y_test, iBest, X_1k, y_1k)
     class34(output_dir, X_train, X_test, y_train, y_test, iBest)
 
     # python3 a1_classify.py -i feats_medium.npz -o classifier_output_mini
