@@ -146,6 +146,30 @@ def class31(output_dir, X_train, X_test, y_train, y_test):
     return iBest
 
 
+def model_selection(iBest):
+    """Return the model accurding to the model index given
+
+    Arguments:
+        iBest {int} -- integer between 1 and 5
+
+    Returns:
+        function -- the clf model
+    """
+    if iBest == 1:
+        return LinearSVC()
+    elif iBest == 2:
+        return SVC(gamma=2, max_iter=1000)
+    elif iBest == 3:
+        return RandomForestClassifier(n_estimators=10, max_depth=5)
+    elif iBest == 4:
+        return MLPClassifier(alpha=0.05)
+    elif iBest == 5:
+        return AdaBoostClassifier()
+    else:
+        print("iBest must be an integer between 1 and 5, but input is", iBest)
+        return None
+
+
 def class32(output_dir, X_train, X_test, y_train, y_test, iBest):
     ''' This function performs experiment 3.2
 
@@ -163,16 +187,7 @@ def class32(output_dir, X_train, X_test, y_train, y_test, iBest):
    '''
     print('\nProcessing Section 3.2...')
 
-    if iBest == 1:
-        clf = LinearSVC()
-    elif iBest == 2:
-        clf = SVC(gamma=2, max_iter=1000)
-    elif iBest == 3:
-        clf = RandomForestClassifier(n_estimators=10, max_depth=5)
-    elif iBest == 4:
-        clf = MLPClassifier(alpha=0.05)
-    elif iBest == 5:
-        clf = AdaBoostClassifier()
+    clf = model_selection(iBest)
 
     data_sizes = [1000, 5000, 10000, 15000, 20000]
     accuracies = np.zeros((5,))
@@ -193,8 +208,25 @@ def class32(output_dir, X_train, X_test, y_train, y_test, iBest):
     X_1k, y_1k = X_train[:1000], y_train[:1000]
     return (X_1k, y_1k)
 
-def model_selection(iBest):
-    
+
+def class33_helper(X_train, X_test, y_train, y_test, selector, clf):
+    """Helper function to calculate the accuracy given the data sets and selector
+
+    Return:
+        acc {float}
+    """
+    # Get the features in training and testing sets
+    X_train_new = selector.fit_transform(X_train, y_train)
+    X_test_idx = selector.get_support(indices=True)
+    X_test_new = X_test[:, X_test_idx]
+    pp = selector.pvalues_[X_test_idx]
+
+    # Train the classifier and retrun the test accuracy
+    clf.fit(X_train_new, y_train)
+    y_pred = clf.predict(X_test_new)
+    C = confusion_matrix(y_test, y_pred)
+    return accuracy(C)
+
 
 def class33(output_dir, X_train, X_test, y_train, y_test, i, X_1k, y_1k):
     ''' This function performs experiment 3.3
@@ -215,29 +247,31 @@ def class33(output_dir, X_train, X_test, y_train, y_test, i, X_1k, y_1k):
     k_feats = [5, 50]
     pvalues = np.zeros((2,)) # one slot each, for k = 5 and 50
 
-    # TODO: check if there's supposed to be that 0
     for i, k in enumerate(k_feats):
         selector = SelectKBest(f_classif, k)
         X_new = selector.fit_transform(X_train, y_train)
         pp = selector.pvalues_
         pp_idx = selector.get_support(indices=True)
-        print(pp_idx)
         p_values = pp[pp_idx]
-        
-        # TODO: Check Piazza 
+
+        # TODO: Check Piazza
         with open(f"{output_dir}/a1_3.3.txt", "a+") as outf:
             outf.write(f'{k} p-values: {[round(pval, 4) for pval in p_values]}\n')
 
+    print('++++++++++++++ Section 3.3.2: accuracies +++++++++++++')
+    clf = model_selection(iBest)
+    selector = SelectKBest(f_classif, k=5)
 
-        # Prepare the variables with corresponding names, then uncomment
-        # this, so it writes them to outf.
+    accuracy_1k = class33_helper(X_1k, X_test, y_1k, y_test, selector, clf)
+    accuracy_full = class33_helper(
+        X_train, X_test, y_train, y_test, selector, clf)
 
-        # for each number of features k_feat, write the p-values for
-        # that number of features:
-            # outf.write(f'{k_feat} p-values: {[round(pval, 4) for pval in p_values]}')
+    with open(f"{output_dir}/a1_3.3.txt", "a+") as outf:
+        outf.write(f'Accuracy for 1k: {accuracy_1k:.4f}\n')
+        outf.write(f'Accuracy for full dataset: {accuracy_full:.4f}\n')
 
-        # outf.write(f'Accuracy for 1k: {accuracy_1k:.4f}\n')
-        # outf.write(f'Accuracy for full dataset: {accuracy_full:.4f}\n')
+
+
         # outf.write(f'Chosen feature intersection: {feature_intersection}\n')
         # outf.write(f'Top-5 at higher: {top_5}\n')
         pass
@@ -304,9 +338,10 @@ if __name__ == "__main__":
 
     # TODO : complete each classification experiment, in sequence.
     # Create/clean up the files
-    open(f"{output_dir}/a1_3.1.txt", "w+").close()
+    # open(f"{output_dir}/a1_3.1.txt", "w+").close()
     open(f"{output_dir}/a1_3.2.txt", "w+").close()
     open(f"{output_dir}/a1_3.3.txt", "w+").close()
+
     # iBest = class31(output_dir, X_train, X_test, y_train, y_test)
     iBest = 5
     X_1k, y_1k = X_train[:1000], y_train[:1000]
@@ -316,3 +351,4 @@ if __name__ == "__main__":
 
     # python3 a1_classify.py -i feats_medium.npz -o classifier_output_mini
     # python3 a1_classify.py -i feats.npz -o classifier_output
+    # python3 a1_classify.py -i feats1.npz -o classifier_output
