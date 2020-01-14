@@ -245,13 +245,14 @@ def class33(output_dir, X_train, X_test, y_train, y_test, i, X_1k, y_1k):
 
     print('++++++++++++++ Section 3.3.1: p-values ++++++++++++++')
     k_feats = [5, 50]
-    pvalues = np.zeros((2,)) # one slot each, for k = 5 and 50
+    pp_idx_full = []
 
     for i, k in enumerate(k_feats):
         selector = SelectKBest(f_classif, k)
         X_new = selector.fit_transform(X_train, y_train)
         pp = selector.pvalues_
         pp_idx = selector.get_support(indices=True)
+        pp_idx_full.append(pp_idx)
         p_values = pp[pp_idx]
 
         # TODO: Check Piazza
@@ -270,11 +271,32 @@ def class33(output_dir, X_train, X_test, y_train, y_test, i, X_1k, y_1k):
         outf.write(f'Accuracy for 1k: {accuracy_1k:.4f}\n')
         outf.write(f'Accuracy for full dataset: {accuracy_full:.4f}\n')
 
+    print('++++++++++++++ Section 3.3.3: intersection +++++++++++')
+    clf = model_selection(iBest)
+    selector = SelectKBest(f_classif, k=5)
 
+    # Indices of features from 1K
+    X_new = selector.fit_transform(X_1k, y_1k)
+    pp_idx_1K_5 = selector.get_support(indices=True)
 
-        # outf.write(f'Chosen feature intersection: {feature_intersection}\n')
-        # outf.write(f'Top-5 at higher: {top_5}\n')
-        pass
+    # Indices of features from full data (from 3.3.1)
+    pp_idx_full_5 = pp_idx_full[0]
+
+    # Get their intersection
+    feature_intersection = [idx for idx in pp_idx_1K_5 if idx in set(pp_idx_full_5)]
+
+    print("Features from 1K: {}\nFeatures from full: {}\nIntersection:{}".format(pp_idx_1K_5, pp_idx_full_5, feature_intersection))
+
+    with open(f"{output_dir}/a1_3.3.txt", "a+") as outf:
+        outf.write(f'Chosen feature intersection: {feature_intersection}\n')
+        outf.write(f'Top-5 at higher: {pp_idx_full_5}\n')
+    
+    # TODO: Following the above, answer the following questions:
+    # (a) Provide names for the features found in the above intersection of the top k = 5 features. If any,
+    # provide a possible explanation as to why these features may be especially useful.
+    # (b) Are p-values generally higher or lower given more or less data? Why or why not?
+    # (c) Name the top 5 features chosen for the 32K training case. Hypothesize as to why those particular
+    # features might dierentiate the classes.
 
 
 def class34(output_dir, X_train, X_test, y_train, y_test, i):
