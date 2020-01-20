@@ -170,8 +170,7 @@ def main(args):
 
                 # TODO: choose to retain fields from those lines that are relevant to you
                 # 'author', 'controversiality', 'score'
-                relevant_fields = ['body', 'id',
-                                   'author', 'controversiality', 'score']
+                relevant_fields = ['body', 'id', 'controversiality', 'score']
                 j = ({key: j[key] for key in relevant_fields})
 
                 # TODO: add a field to each selected line called 'cat' with the value of 'file' (e.g., 'Alt', 'Right', ...)

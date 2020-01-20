@@ -488,4 +488,57 @@ Best performers:
 	* AdaBoostClassifier with learning rate = 1.5 		-- Accuracy = 0.431875
 	* MLPClassifier with alpha = 0.05 					-- Accuracy = 0.426125
 * The highest in ones that use all features:
-	* MLPClassifier with alpha = 0.01 					-- Accuracy = 0.40225
+	* MLPClassifier with alpha = 0.01 					-- Accuracy = 0.40225##############################################
+Testing performance with old features
+##############################################
+##############################################
+Testing performance with new features
+##############################################
+##############################################
+Testing performance with old features
+##############################################
+##############################################
+Testing performance with new features
+##############################################
+##############################################
+Testing performance with old features
+##############################################
+##############################################
+Testing performance with new features
+##############################################
+##############################################
+Testing performance with old features
+##############################################
+##############################################
+Testing performance with new features
+##############################################
+##############################################
+Testing performance with old features
+##############################################
+##############################################
+Testing performance with new features
+##############################################
+##############################################
+Testing performance with old features
+##############################################
+##############################################
+Testing performance with new features
+##############################################
+##############################################
+Testing performance with old features
+##############################################
+##############################################
+Testing performance with new features
+##############################################
+##############################################
+Testing performance with old features
+##############################################
+##############################################
+Testing performance with new features
+##############################################
+##############################################
+Testing performance with new features
+##############################################
+##############################################
+Testing performance with new features
+##############################################

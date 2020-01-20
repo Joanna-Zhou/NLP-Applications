@@ -23,15 +23,13 @@ from sklearn.feature_selection import SelectKBest
 from sklearn.feature_selection import chi2
 from sklearn.model_selection import train_test_split
 from sklearn.model_selection import KFold
+from sklearn.model_selection import ShuffleSplit
+
 
 # Post-process
 from scipy import stats
 from scipy.stats import ttest_rel
 from sklearn.metrics import confusion_matrix
-
-import argparse
-
-import os
 
 
 #########################################
@@ -177,7 +175,7 @@ def classifers(X_train, X_test, y_train, y_test, output_dir):
         outf.write(f'##############################################\n')
 
     print('\nProcessing Section 3.1...')
-    
+
     global MODELS, TESTS
     MODELS = {1: "SGDClassifier",
               2: "GaussianNB",
@@ -208,7 +206,7 @@ def classifers(X_train, X_test, y_train, y_test, output_dir):
             start_timer = timeit.default_timer()
             accuracies[model][param] = (
                 train_evaluate(
-                    X_train, X_test, y_train, y_test, key, param, feat_num=0), 
+                    X_train, X_test, y_train, y_test, key, param, feat_num=0),
                 train_evaluate(
                     X_train, X_test, y_train, y_test, key, param, feat_num=20)
             )
@@ -217,57 +215,160 @@ def classifers(X_train, X_test, y_train, y_test, output_dir):
 
     df = pd.DataFrame.from_dict(accuracies)
     print(df.to_string())
-    
+
     with open(f"{output_dir}/a1_bonus_classifiers.txt", "a+") as outf:
         # For each classifier, compute results and write the following output:
         outf.write(f'All results:\n{df.to_string()}\n')  # Classifier name
         outf.write(f'##############################################\n\n\n')
-    return    
+    return
 
 
-def adding_features(data, feats_old):
-    '''
-    :param filename:   an numpy array, output from part 2, stored in feats.npz
-    :param preproc:    preprocessed result from part 1
-    :return:           updated new feature array with the two updated features
-    '''
+#########################################
+######### Code for new features #########
+#########################################
+def get_new_feats(feats_old, data):
+    """Use the old features extracted from Task 2 and the raw data from Task 2 to get new features
 
-    # loading array feat.npz
-    feats_old = np.load(filename)
-    feats_old = feats_old[feats_old.files[0]]  # (40000,174)
-
-    # Loading preproc to add new features into the np.array feats
-    data = json.load(open(preproc))
-    # added score and controversiality
-    feats_new = np.zeros((len(data), 173 + 1 + 4))
+    Returns:
+        ndarray -- size should be (len(feats.old), size of new features (>=174))
+    """
+    print("The old features' dimension is {}".format(feats_old.shape))
+    feats_new = np.hstack((feats_old, np.zeros((len(data), 4))))
 
     for i in range(feats_new.shape[0]):
-        feats_new[i][:173] = feats_old[i][:173]
         feats_new[i][173] = data[i]['controversiality']
         feats_new[i][174] = data[i]['score']
-        feats_new[i][175] = data[i]['body'].count('clinton')
         feats_new[i][176] = data[i]['body'].count('obama')
-        feats_new[i][177] = feats_old[i][173]
+        feats_new[i][175] = data[i]['body'].count('clinton')
 
-    # feats_new is the new numpy array with dimension (40000,176), with the addition of the two features
-    # the last column of array feats_new is the category
+    print("Finishes adding new features, now the dimension is {}".format(feats_new.shape))
     return feats_new
+
+
+def features(X_train, X_test, y_train, y_test, output_dir, clf, new=False):
+    """[summary]
+    
+    Arguments:
+        X_train {[type]} -- [description]
+        X_test {[type]} -- [description]
+        y_train {[type]} -- [description]
+        y_test {[type]} -- [description]
+        output_dir {[type]} -- [description]
+    """
+    if new:
+        print("++++++++++++++ Testing new features ++++++++++++++ ")
+        with open(f"{output_dir}/a1_bonus_classifiers.txt", "a+") as outf:
+            # For each classifier, compute results and write the following output:
+            outf.write(f'##############################################\n')
+            outf.write(f'Testing performance with new features\n')
+            outf.write(f'##############################################\n')
+        new_num_feats = X_train.shape[1]
+    else:
+        print("++++++++++++++ Testing old features ++++++++++++++ ")
+        with open(f"{output_dir}/a1_bonus_classifiers.txt", "a+") as outf:
+            # For each classifier, compute results and write the following output:
+            outf.write(f'##############################################\n')
+            outf.write(f'Testing performance with old features\n')
+            outf.write(f'##############################################\n')
+    
+    # If we passed in the new features, we want to know their p-values
+    if new:
+        print("+++++ Checking p value ++++++ ")
+        k = new_num_feats - 173
+        selector = SelectKBest(f_classif, k)
+        X_new = selector.fit_transform(X_train, y_train)
+        
+        pp = selector.pvalues_
+        p_values_new = pp[173:new_num_feats]
+
+        pp_idx = selector.get_support(indices=True)
+        p_values_k = pp[pp_idx]
+        
+        print("The p-values of new features are: \t{},\nCompared to the best {} p-values: \t{}".format(p_values_new, k, p_values_k))
+        print("Also compared to the worst p-value: \t{}".format(np.nanmax(pp)))
+
+        # TODO: Check Piazza
+        with open(f"{output_dir}/a1_bonus_features.txt", "a+") as outf:
+            outf.write(
+                f'Best features\' p-values: {[pval for pval in p_values_k]}\n')
+            outf.write(
+                f'New features \' p-values: {[pval for pval in p_values_new]}\n')
+
+    # Now we check the accuracies with either the new or old
+    print("+++++ Checking accuracies with best {} features ++++++ ".format(20))
+    selector = SelectKBest(f_classif, k=20)
+
+    print("With 1K data:")
+    X_train_new = selector.fit_transform(X_train[:1000], y_train[:1000])  
+    X_test_new = selector.transform(X_test)
+    clf.fit(X_train[:1000], y_train[:1000])
+    y_pred = clf.predict(X_test_new)
+    acc1K = accuracy(confusion_matrix(y_test, y_pred))
+    print("\tAccuracy:", acc1K)
+    
+    print("With full data:")
+    X_train_new = selector.fit_transform(X_train, y_train)  
+    X_test_new = selector.transform(X_test)
+    clf.fit(X_train, y_train)
+    y_pred = clf.predict(X_test_new)
+    acc = accuracy(confusion_matrix(y_test, y_pred))
+    print("\tAccuracy:", acc)
+    
+    with open(f"{output_dir}/a1_bonus_features.txt", "a+") as outf:
+            outf.write(
+                f'Accuracy with 1K data: {acc1K}\n')
+            outf.write(
+                f'Accuracy with full data: {acc}\n')
+
+    # accuracy_1k = class33_helper(X_1k, X_test, y_1k, y_test, selector, clf)
+    # accuracy_full = class33_helper(
+    #     X_train, X_test, y_train, y_test, selector, clf)
+
+    # with open(f"{output_dir}/a1_bonus_features.txt", "a+") as outf:
+    #     outf.write(f'Accuracy for 1k: {accuracy_1k:.4f}\n')
+    #     outf.write(f'Accuracy for full dataset: {accuracy_full:.4f}\n')
+
+    # print('++++++++++++++ Section 3.3.3 & 4: intersection ++++++++')
+    # clf = model_selection(iBest)
+    # selector = SelectKBest(f_classif, k=5)
+
+    # # Indices of features from 1K
+    # X_new = selector.fit_transform(X_1k, y_1k)
+    # pp_idx_1K_5 = selector.get_support(indices=True)
+
+    # # Indices of features from full data (from 3.3.1)
+    # pp_idx_full_5 = pp_idx_full[0]
+
+    # # Get their intersection
+    # feature_intersection = [
+    #     idx for idx in pp_idx_1K_5 if idx in set(pp_idx_full_5)]
+
+    # print("Features from 1K: \t{}\nFeatures from full: \t{}\nIntersection: \t\t{}".format(
+    #     pp_idx_1K_5, pp_idx_full_5, feature_intersection))
+
+    # with open(f"{output_dir}/a1_bonus_features.txt", "a+") as outf:
+    #     outf.write(f'Chosen feature intersection: {feature_intersection}\n')
+    #     outf.write(f'Top-5 at higher: {pp_idx_full_5}\n')
+    
+    return
 
 
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument(
-        "-i", "--input", help="the input npz file from Task 2", required=True)
+        "-i2", "--input2", help="the input npz file from Task 2", required=True)
+    parser.add_argument(
+        "-i1", "--input1", help="The input JSON file, preprocessed as in Task 1", required=True)
     parser.add_argument(
         "-o", "--output_dir",
-        help="The directory to write a1_3.X.txt files to.",
+        help="The directory to write bonus files to.",
         default=os.path.dirname(os.path.dirname(__file__)))
     args = parser.parse_args()
 
     # Load data and split into train and test
     np.random.seed(999)
-    input_file, output_dir = args.input, args.output_dir
+    input_file, output_dir = args.input2, args.output_dir
     npz = np.load(input_file)
     feats = npz[npz.files[0]]
 
@@ -276,12 +377,30 @@ if __name__ == "__main__":
     (X_train, X_test, y_train, y_test) = train_test_split(
         X, y, test_size=0.2)
 
-    # Create/clean up the files
-    open(f"{output_dir}/a1_bonus_classifiers.txt", "w+").close()
+
+    ##########################################################
+    ######### Test and analyze different classifiers #########
+    ##########################################################
+    # open(f"{output_dir}/a1_bonus_classifiers.txt", "w+").close()
+    # classifers(X_train, X_test, y_train, y_test, output_dir) # TODO: activate this before submission
+
+    ##########################################################
+    ######### Process and test new features ##################
+    ##########################################################
+    # Model used: MLPClassifier with alpha = 0.01
+    i, param = 4, 0.01  # chosen from the feature-based ones, as we are considering features now
+    clf = model_selection(i, param)
+    
+    # Get new features
+    data = json.load(open(args.input1))
+    X_new = get_new_feats(X, data)
+    (X_train, X_test, X_train_new, X_test_new, y_train, y_test) = train_test_split(
+        X, X_new, y, test_size=0.2)
+
     open(f"{output_dir}/a1_bonus_features.txt", "w+").close()
+    features(X_train_new, X_test_new, y_train, y_test, output_dir, clf, new=True)
+    features(X_train, X_test, y_train, y_test, output_dir, clf, new=False)
 
-    classifers(X_train, X_test, y_train, y_test, output_dir)
-    # classifers(X_train[:1000], X_test, y_train[:1000], y_test, output_dir)
 
-    # python3 a1_bonus.py -i feats_medium.npz -o classifier_output_mini
-    # python3 a1_bonus.py -i feats.npz -o bonus_output
+    # python3 a1_bonus.py -i1 preproc.json -i2 feats.npz -o bonus_output
+    # python3 a1_bonus.py -i1 preproc_bonus.json -i2 feats.npz -o bonus_output
