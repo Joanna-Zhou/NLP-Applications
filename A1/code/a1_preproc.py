@@ -169,7 +169,9 @@ def main(args):
                 j = json.loads(line)
 
                 # TODO: choose to retain fields from those lines that are relevant to you
-                relevant_fields = ['body', 'id']  # 'author', 'controversiality', 'score'
+                # 'author', 'controversiality', 'score'
+                relevant_fields = ['body', 'id',
+                                   'author', 'controversiality', 'score']
                 j = ({key: j[key] for key in relevant_fields})
 
                 # TODO: add a field to each selected line called 'cat' with the value of 'file' (e.g., 'Alt', 'Right', ...)

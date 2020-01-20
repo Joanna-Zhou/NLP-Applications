@@ -224,7 +224,8 @@ def classifers(X_train, X_test, y_train, y_test, output_dir):
         outf.write(f'##############################################\n\n\n')
     return    
 
-def adding_features(filename, preproc):
+
+def adding_features(data, feats_old):
     '''
     :param filename:   an numpy array, output from part 2, stored in feats.npz
     :param preproc:    preprocessed result from part 1
