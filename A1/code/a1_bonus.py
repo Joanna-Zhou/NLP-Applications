@@ -4,6 +4,7 @@ import os
 import sys
 import timeit
 import numpy as np
+import pandas as pd
 import csv
 import json
 
@@ -142,16 +143,16 @@ def train_evaluate(X_train, X_test, y_train, y_test, i, param=None, output_dir="
     acc, rec, prec = accuracy(C), recall(C), precision(C)
 
     # Print
-    print("Classifier: {}\nNumver of features: {}\nParameter: {}".format(
+    print("Classifier: {}\nNumber of features: {}\nParameter: {}".format(
         classifier_name, feat_num, param))
-    print("\tAccuracy: {}\n\tAverage recall: {}\n\tAverage precision: {}\n\tConfusion matrix:\n\t{}".format(
+    print("Accuracy: {}\nAverage recall: {}\nAverage precision: {}\nConfusion matrix:\n{}".format(
         acc, rec.mean(), prec.mean(), C))
 
     # Txt log
-    with open(f"{output_dir}/a1_bonus.txt", "a+") as outf:
+    with open(f"{output_dir}/a1_bonus_classifiers.txt", "a+") as outf:
         # For each classifier, compute results and write the following output:
         outf.write(f'Results for {classifier_name}:\n')  # Classifier name
-        outf.write(f'Feature-based? {feat_num>0}:\n')
+        outf.write(f'Feature-based: {feat_num>0}\n')
         outf.write(f'\tAccuracy: {acc:.4f}\n')
         outf.write(f'\tRecall: {[round(item, 4) for item in rec]}\n')
         outf.write(f'\tPrecision: {[round(item, 4) for item in prec]}\n')
@@ -169,7 +170,7 @@ def classifers(X_train, X_test, y_train, y_test, output_dir):
        filename : string, the name of the npz file from Task 2
 
     '''
-    with open(f"{output_dir}/a1_bonus.txt", "a+") as outf:
+    with open(f"{output_dir}/a1_bonus_classifiers.txt", "a+") as outf:
         # For each classifier, compute results and write the following output:
         outf.write(f'##############################################\n')
         outf.write(f'Testing performance with different classifiers\n')
@@ -196,16 +197,32 @@ def classifers(X_train, X_test, y_train, y_test, output_dir):
              7: [0],
              8: [None, 'sqrt', 'log2']}  # max_features in DecisionTreeClassifier
 
+    # TESTS = {1: [0]} # small sample tester
+
     accuracies = {}
-    for key in range(1, 8):
-        accuracies[key] = {}
+    for key in range(1, len(TESTS)+1):
+        model = MODELS[key]
+        accuracies[model] = {}
         for param in TESTS[key]:
             print("+++++ Model {} with param {} +++++++++++++++++++++++++++++++++++".format(key, param))
             start_timer = timeit.default_timer()
-            accuracies[key][param] = train_evaluate(X_train, X_test, y_train, y_test, i, param=None, output_dir="bonus_output", feat_num=10, full_output=True)
+            accuracies[model][param] = (
+                train_evaluate(
+                    X_train, X_test, y_train, y_test, key, param, feat_num=0), 
+                train_evaluate(
+                    X_train, X_test, y_train, y_test, key, param, feat_num=20)
+            )
             stop_timer = timeit.default_timer()
             print("+++++ Finished in {} seconds +++++\n".format(stop_timer - start_timer))
 
+    df = pd.DataFrame.from_dict(accuracies)
+    print(df.to_string())
+    
+    with open(f"{output_dir}/a1_bonus_classifiers.txt", "a+") as outf:
+        # For each classifier, compute results and write the following output:
+        outf.write(f'All results:\n{df.to_string()}\n')  # Classifier name
+        outf.write(f'##############################################\n\n\n')
+    return    
 
 def adding_features(filename, preproc):
     '''
@@ -259,10 +276,11 @@ if __name__ == "__main__":
         X, y, test_size=0.2)
 
     # Create/clean up the files
-    open(f"{output_dir}/a1_bonus.txt", "w+").close()
+    open(f"{output_dir}/a1_bonus_classifiers.txt", "w+").close()
+    open(f"{output_dir}/a1_bonus_features.txt", "w+").close()
 
-    # classifers(X_train, X_test, y_train, y_test, output_dir)
-    classifers(X_train[:1000], X_test, y_train[:1000], y_test, output_dir)
+    classifers(X_train, X_test, y_train, y_test, output_dir)
+    # classifers(X_train[:1000], X_test, y_train[:1000], y_test, output_dir)
 
     # python3 a1_bonus.py -i feats_medium.npz -o classifier_output_mini
     # python3 a1_bonus.py -i feats.npz -o bonus_output
