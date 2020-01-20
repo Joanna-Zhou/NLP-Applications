@@ -215,9 +215,14 @@ def setup(dir):
     BGL, WARRINGER, LIWC = {}, {}, {}
 
     # Create the dictionaries for the norms first
-    subdir_wordlists = os.path.join(args.a1_dir, 'wordlists/')
-    bgl_file = open(subdir_wordlists + 'BristolNorms+GilhoolyLogie.csv', 'r')
-    warringer_file = open(subdir_wordlists + 'Ratings_Warriner_et_al.csv', 'r')
+    try:
+        bgl_file = open('/u/cs401/Wordlists/BristolNorms+GilhoolyLogie.csv', 'r')
+        warringer_file = open('/u/cs401/Wordlists/Ratings_Warriner_et_al.csv', 'r')
+    except:
+        subdir_wordlists = os.path.join(args.a1_dir, 'wordlists/')
+        bgl_file = open(subdir_wordlists +
+                        'BristolNorms+GilhoolyLogie.csv', 'r')
+        warringer_file = open(subdir_wordlists + 'Ratings_Warriner_et_al.csv', 'r')
 
     for row in csv.DictReader(bgl_file):
         try:

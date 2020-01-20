@@ -125,9 +125,11 @@ def main(args):
     #     preproc1(debug_text)
     #     return
     global abbrev
-	abbrev_path = os.path.join(args.a1_dir, 'Wordlists/abbrev.english')
-	abbrev = open(abbrev_path, 'r')
-	abbrev = abbrev.read().split('\n')
+    abbrev = ['Ala.', 'Ariz.', 'Assn.', 'Atty.', 'Aug.', 'Ave.', 'Bldg.', 'Blvd.', 'Calif.', 'Capt.', 'Cf.', 'Ch.', 'Co.', 'Col.', 'Colo.', 'Conn.', 'Corp.', 'DR.', 'Dec.', 'Dept.', 'Dist.', 'Dr.', 'Drs.', 'Ed.', 'Eq.', 'FEB.', 'Feb.', 'Fig.', 'Figs.', 'Fla.', 'Ga.', 'Gen.', 'Gov.', 'HON.', 'Ill.', 'Inc.', 'JR.', 'Jan.', 'Jr.', 'Kan.', 'Ky.', 'La.', 'Lt.', 'Ltd.', 'MR.', 'MRS.', 'Mar.', 'Mass.', 'Md.', 'Messrs.', 'Mich.', 'Minn.', 'Miss.', 'Mmes.', 'Mo.', 'Mr.', 'Mrs.', 'Ms.', 'Mx.', 'Mt.', 'NO.', 'No.', 'Nov.', 'Oct.', 'Okla.', 'Op.', 'Ore.', 'Pa.', 'Pp.', 'Prof.', 'Prop.', 'Rd.', 'Ref.', 'Rep.', 'Reps.', 'Rev.', 'Rte.', 'Sen.', 'Sept.', 'Sr.', 'St.', 'Stat.', 'Supt.', 'Tech.', 'Tex.', 'Va.', 'Vol.', 'Wash.', 'al.', 'av.', 'ave.', 'ca.', 'cc.', 'chap.', 'cm.', 'cu.', 'dia.', 'dr.', 'eqn.', 'etc.', 'fig.', 'figs.', 'ft.', 'gm.', 'hr.', 'in.', 'kc.', 'lb.', 'lbs.', 'mg.', 'ml.', 'mm.', 'mv.', 'nw.', 'oz.', 'pl.', 'pp.', 'sec.', 'sq.', 'st.', 'vs.', 'yr.', '', 'e.g.', 'i.e.', 'eg.', 'ie.']
+    # abbrev_path = os.path.join(args.a1_dir, 'Wordlists/abbrev.english')
+    # abbrev = open(abbrev_path, 'r')
+    # abbrev = abbrev.read().split('\n')
+    # print(abbrev)
 
     for subdir, dirs, files in os.walk(indir):
         print("Processing files...")
@@ -201,8 +203,8 @@ if __name__ == "__main__":
     indir = os.path.join(args.a1_dir, 'data')
 
     global nlp
-	nlp = spacy.load('en_core_web_sm', disable=['parser', 'ner'])
-	sentencizer = nlp.create_pipe("sentencizer")
-	nlp.add_pipe(sentencizer)
+    nlp = spacy.load('en_core_web_sm', disable=['parser', 'ner'])
+    sentencizer = nlp.create_pipe("sentencizer")
+    nlp.add_pipe(sentencizer)
 
     main(args)

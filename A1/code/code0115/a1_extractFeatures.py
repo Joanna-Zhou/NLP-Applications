@@ -215,7 +215,7 @@ def setup(dir):
     BGL, WARRINGER, LIWC = {}, {}, {}
 
     # Create the dictionaries for the norms first
-    subdir_wordlists = os.path.join(args.a1_dir, 'wordlists/')
+    subdir_wordlists = os.path.join(args.a1_dir, 'Wordlists/')
     bgl_file = open(subdir_wordlists + 'BristolNorms+GilhoolyLogie.csv', 'r')
     warringer_file = open(subdir_wordlists + 'Ratings_Warriner_et_al.csv', 'r')
 

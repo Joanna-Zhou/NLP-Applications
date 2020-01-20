@@ -15,10 +15,20 @@ import html  # Python3
 import string
 import time
 
-#abbrev_path = '/u/cs401/Wordlists/abbrev.english'
-abbrev_path = '../wordlists/abbrev.english'
-abbrev = open(abbrev_path, 'r')
-abbrev = abbrev.read().split('\n')
+
+# Reference: last year's assignment (the one mis-uploaded in the google drive before)
+abbrev = ['Ala.', 'Ariz.', 'Assn.', 'Atty.', 'Aug.', 'Ave.', 'Bldg.', 'Blvd.', 'Calif.', 'Capt.', 'Cf.', 'Ch.', 'Co.', 'Col.', 'Colo.', 'Conn.', 'Corp.', 'DR.', 'Dec.', 'Dept.', 'Dist.', 'Dr.', 'Drs.', 'Ed.', 'Eq.', 'FEB.', 'Feb.', 'Fig.', 'Figs.', 'Fla.', 'Ga.', 'Gen.', 'Gov.', 'HON.', 'Ill.', 'Inc.', 'JR.', 'Jan.', 'Jr.', 'Kan.', 'Ky.', 'La.', 'Lt.', 'Ltd.', 'MR.', 'MRS.', 'Mar.', 'Mass.', 'Md.', 'Messrs.', 'Mich.', 'Minn.', 'Miss.', 'Mmes.', 'Mo.', 'Mr.', 'Mrs.', 'Ms.', 'Mx.', 'Mt.', 'NO.',
+          'No.', 'Nov.', 'Oct.', 'Okla.', 'Op.', 'Ore.', 'Pa.', 'Pp.', 'Prof.', 'Prop.', 'Rd.', 'Ref.', 'Rep.', 'Reps.', 'Rev.', 'Rte.', 'Sen.', 'Sept.', 'Sr.', 'St.', 'Stat.', 'Supt.', 'Tech.', 'Tex.', 'Va.', 'Vol.', 'Wash.', 'al.', 'av.', 'ave.', 'ca.', 'cc.', 'chap.', 'cm.', 'cu.', 'dia.', 'dr.', 'eqn.', 'etc.', 'fig.', 'figs.', 'ft.', 'gm.', 'hr.', 'in.', 'kc.', 'lb.', 'lbs.', 'mg.', 'ml.', 'mm.', 'mv.', 'nw.', 'oz.', 'pl.', 'pp.', 'sec.', 'sq.', 'st.', 'vs.', 'yr.', '', 'e.g.', 'i.e.', 'eg.', 'ie.']
+
+# Reference: https://mlwhiz.com/blog/2019/01/17/deeplearning_nlp_preprocess/
+contraction_dict = {"ain't": "is not", "aren't": "are not", "can't": "cannot", "'cause": "because", "could've": "could have", "couldn't": "could not", "didn't": "did not",  "doesn't": "does not", "don't": "do not", "hadn't": "had not", "hasn't": "has not", "haven't": "have not", "he'd": "he would", "he'll": "he will", "he's": "he is", "how'd": "how did", "how'd'y": "how do you", "how'll": "how will", "how's": "how is",  "I'd": "I would", "I'd've": "I would have", "I'll": "I will", "I'll've": "I will have", "I'm": "I am", "I've": "I have", "i'd": "i would", "i'd've": "i would have", "i'll": "i will",  "i'll've": "i will have", "i'm": "i am", "i've": "i have", "isn't": "is not", "it'd": "it would", "it'd've": "it would have", "it'll": "it will", "it'll've": "it will have", "it's": "it is", "let's": "let us", "ma'am": "madam", "mayn't": "may not", "might've": "might have", "mightn't": "might not", "mightn't've": "might not have", "must've": "must have", "mustn't": "must not", "mustn't've": "must not have", "needn't": "need not", "needn't've": "need not have", "o'clock": "of the clock", "oughtn't": "ought not", "oughtn't've": "ought not have", "shan't": "shall not", "sha'n't": "shall not", "shan't've": "shall not have", "she'd": "she would", "she'd've": "she would have", "she'll": "she will", "she'll've": "she will have", "she's": "she is", "should've": "should have", "shouldn't": "should not", "shouldn't've": "should not have",
+                    "so've": "so have", "so's": "so as", "this's": "this is", "that'd": "that would", "that'd've": "that would have", "that's": "that is", "there'd": "there would", "there'd've": "there would have", "there's": "there is", "here's": "here is", "they'd": "they would", "they'd've": "they would have", "they'll": "they will", "they'll've": "they will have", "they're": "they are", "they've": "they have", "to've": "to have", "wasn't": "was not", "we'd": "we would", "we'd've": "we would have", "we'll": "we will", "we'll've": "we will have", "we're": "we are", "we've": "we have", "weren't": "were not", "what'll": "what will", "what'll've": "what will have", "what're": "what are",  "what's": "what is", "what've": "what have", "when's": "when is", "when've": "when have", "where'd": "where did", "where's": "where is", "where've": "where have", "who'll": "who will", "who'll've": "who will have", "who's": "who is", "who've": "who have", "why's": "why is", "why've": "why have", "will've": "will have", "won't": "will not", "won't've": "will not have", "would've": "would have", "wouldn't": "would not", "wouldn't've": "would not have", "y'all": "you all", "y'all'd": "you all would", "y'all'd've": "you all would have", "y'all're": "you all are", "y'all've": "you all have", "you'd": "you would", "you'd've": "you would have", "you'll": "you will", "you'll've": "you will have", "you're": "you are", "you've": "you have"}
+def replace_contractions(text):
+    contractions_re = re.compile('(%s)' % '|'.join(contraction_dict.keys()))
+    def replace(match):
+        return contraction_dict[match.group(0)]
+    return contractions_re.sub(replace, text)
+
 
 def print_current(comment, step, note=''):
     """
@@ -75,6 +85,7 @@ def preproc1(comment, steps=range(1, 5)):
         # print_current(modComm, 4)
 
     # TODO: get Spacy document for modComm
+    modComm = replace_contractions(modComm)
     utt = nlp(modComm)
     modComm = ''
 
@@ -107,10 +118,10 @@ def preproc1(comment, steps=range(1, 5)):
         for token in doc:
             if token.text != '':
                 # Keep it if it is all cap
-                if len(re.compile("(^| )[A-Z]{3,}").findall(comment)) > 0:
-                    senttext += token.text + '/' + token.tag_
+                # if len(re.compile("(^| )[A-Z]{3,}").findall(comment)) > 0:
+                #     senttext += token.text + '/' + token.tag_
                 # Keep it if it doesn't starts with - but its lemma does
-                elif token.lemma_.startswith('-') and not token.text.startswith('-'):
+                if token.lemma_.startswith('-') and not token.text.startswith('-'):
                     senttext += token.text + '/' + token.tag_
                 # Otherwise replace it with its lemma
                 else:
@@ -128,10 +139,11 @@ def main(args):
     # Debug settings
     debug = False
     # debug_with_debug_text = True
-    # debug_text = "THIS IS  WHY      ESPN    IS  DYING. \n\nhttp: // www.foxnews.com/entertainment/2017/02/15/espn-sued-for-wrongful-termination-by-announcer-after-venus-williams-match-call.html \nSOCIAL JUSTICE, PC CULTURE, AND POLITICS ALL FUCK OFF FROM MY SPORTS!!!\n\n\"When all else fails, go on their subreddit &amp; downvote all of the comments to show them our feelings &amp; hide the truth!\" I'm not even really convinced he lied to Pence, versus was asked to lie to the public to downplay the Russia propaganda.  But as the facts now don't align with the official story, someone had to fall on their sword.  OR... there is something more going on here behind the scenes.   At face value, this seems like something they could have weathered. \n\nOh it takes that long for EO to be made/reviewed?\n\nThat is the narrative on on / reee/politburo \n\[\"Because it's *obviously* just an alt right smear campaign or something...\"\](https: // imgur.com/HgrT8Qm)"
+    # # debug_text = "THIS IS  WHY      ESPN    IS  DYING. \n\nhttp: // www.foxnews.com/entertainment/2017/02/15/espn-sued-for-wrongful-termination-by-announcer-after-venus-williams-match-call.html \nSOCIAL JUSTICE, PC CULTURE, AND POLITICS ALL FUCK OFF FROM MY SPORTS!!!\n\n\"When all else fails, go on their subreddit &amp; downvote all of the comments to show them our feelings &amp; hide the truth!\" I'm not even really convinced he lied to Pence, versus was asked to lie to the public to downplay the Russia propaganda.  But as the facts now don't align with the official story, someone had to fall on their sword.  OR... there is something more going on here behind the scenes.   At face value, this seems like something they could have weathered. \n\nOh it takes that long for EO to be made/reviewed?\n\nThat is the narrative on on / reee/politburo \n\[\"Because it's *obviously* just an alt right smear campaign or something...\"\](https: // imgur.com/HgrT8Qm)"
 
     # if debug_with_debug_text:
-    #     preproc1(debug_text)
+    #     debug_text = "I know words. LMAO. I've got the best words."
+    #     print(preproc1(debug_text))
     #     return
 
     for subdir, dirs, files in os.walk(indir):

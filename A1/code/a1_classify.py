@@ -367,7 +367,7 @@ def class34(output_dir, X_train, X_test, y_train, y_test, i):
 
     print('Finish fold comparicons:\np values:{}\nAverage accuracies of each model:\n{}'.format(p_values, kfold_accuracies))
 
-    with open(f"{output_dir}/a1_3.2.txt", "w") as outf:
+    with open(f"{output_dir}/a1_3.4.txt", "w") as outf:
         outf.write(f'Kfold Accuracies: {[round(acc, 4) for acc in kfold_accuracies]}\n')
         outf.write(f'p-values: {[round(pval, 4) for pval in p_values]}\n')
         pass
@@ -417,6 +417,7 @@ if __name__ == "__main__":
     open(f"{output_dir}/a1_3.1.txt", "w+").close()
     open(f"{output_dir}/a1_3.2.txt", "w+").close()
     open(f"{output_dir}/a1_3.3.txt", "w+").close()
+    open(f"{output_dir}/a1_3.4.txt", "w+").close()
 
     iBest = class31(output_dir, X_train, X_test, y_train, y_test)
     # iBest = 5
