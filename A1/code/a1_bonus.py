@@ -147,14 +147,15 @@ def train_evaluate(X_train, X_test, y_train, y_test, i, param=None, output_dir="
         acc, rec.mean(), prec.mean(), C))
 
     # Txt log
-    with open(f"{output_dir}/a1_bonus_classifiers.txt", "a+") as outf:
-        # For each classifier, compute results and write the following output:
-        outf.write(f'Results for {classifier_name}:\n')  # Classifier name
-        outf.write(f'Feature-based: {feat_num>0}\n')
-        outf.write(f'\tAccuracy: {acc:.4f}\n')
-        outf.write(f'\tRecall: {[round(item, 4) for item in rec]}\n')
-        outf.write(f'\tPrecision: {[round(item, 4) for item in prec]}\n')
-        outf.write(f'\tConfusion Matrix: \n{C}\n\n')
+    if full_output:
+        with open(f"{output_dir}/a1_bonus_classifiers.txt", "a+") as outf:
+            # For each classifier, compute results and write the following output:
+            outf.write(f'Results for {classifier_name}:\n')  # Classifier name
+            outf.write(f'Feature-based: {feat_num>0}\n')
+            outf.write(f'\tAccuracy: {acc:.4f}\n')
+            outf.write(f'\tRecall: {[round(item, 4) for item in rec]}\n')
+            outf.write(f'\tPrecision: {[round(item, 4) for item in prec]}\n')
+            outf.write(f'\tConfusion Matrix: \n{C}\n\n')
     return acc
 
 
@@ -175,25 +176,6 @@ def classifers(X_train, X_test, y_train, y_test, output_dir):
         outf.write(f'##############################################\n')
 
     print('\nProcessing Section 3.1...')
-
-    global MODELS, TESTS
-    MODELS = {1: "SGDClassifier",
-              2: "GaussianNB",
-              3: "RandomForestClassifier",
-              4: "MLPClassifier",
-              5: "AdaBoostClassifier",
-              6: "Linear SVC",
-              7: "Gaussian SVC",
-              8: "DecisionTreeClassifier"}
-
-    TESTS = {1: [0],
-             2: [0],
-             3: [1, 5, 10, 15],  # max depths in RandomForestClassifier
-             4: [0.01, 0.05, 0.1, 0.5, 1], # alphas in MLPClassifier
-             5: [0.05, 0.1, 1.0, 1.5, 2.0], # learning rate in AdaBoostClassifier
-             6: [0],
-             7: [0],
-             8: [None, 'sqrt', 'log2']}  # max_features in DecisionTreeClassifier
 
     # TESTS = {1: [0]} # small sample tester
 
@@ -245,7 +227,7 @@ def get_new_feats(feats_old, data):
     return feats_new
 
 
-def features(X_train, X_test, y_train, y_test, output_dir, clf, new=False):
+def features(X_train, X_test, y_train, y_test, output_dir, clf, key=None, param=None, new=False):
     """[summary]
     
     Arguments:
@@ -256,20 +238,18 @@ def features(X_train, X_test, y_train, y_test, output_dir, clf, new=False):
         output_dir {[type]} -- [description]
     """
     if new:
-        print("++++++++++++++ Testing new features ++++++++++++++ ")
-        with open(f"{output_dir}/a1_bonus_classifiers.txt", "a+") as outf:
-            # For each classifier, compute results and write the following output:
-            outf.write(f'##############################################\n')
-            outf.write(f'Testing performance with new features\n')
-            outf.write(f'##############################################\n')
+        label = "new"
         new_num_feats = X_train.shape[1]
     else:
-        print("++++++++++++++ Testing old features ++++++++++++++ ")
-        with open(f"{output_dir}/a1_bonus_classifiers.txt", "a+") as outf:
-            # For each classifier, compute results and write the following output:
-            outf.write(f'##############################################\n')
-            outf.write(f'Testing performance with old features\n')
-            outf.write(f'##############################################\n')
+        label = "old"
+        new_num_feats = 0
+        
+    print("\n########################## Testing {} features ##########################\n".format(label))
+    with open(f"{output_dir}/a1_bonus_classifiers.txt", "a+") as outf:
+        # For each classifier, compute results and write the following output:
+        outf.write(f'##############################################\n')
+        outf.write(f'Testing performance with {label} features\n')
+        outf.write(f'##############################################\n')
     
     # If we passed in the new features, we want to know their p-values
     if new:
@@ -295,61 +275,40 @@ def features(X_train, X_test, y_train, y_test, output_dir, clf, new=False):
                 f'New features \' p-values: {[pval for pval in p_values_new]}\n')
 
     # Now we check the accuracies with either the new or old
-    print("+++++ Checking accuracies with best {} features ++++++ ".format(20))
+    print("\n+++++ Checking accuracies with best {} features ++++++ ".format(20))
     selector = SelectKBest(f_classif, k=20)
 
-    print("With 1K data:")
-    X_train_new = selector.fit_transform(X_train[:1000], y_train[:1000])  
-    X_test_new = selector.transform(X_test)
-    clf.fit(X_train[:1000], y_train[:1000])
-    y_pred = clf.predict(X_test_new)
-    acc1K = accuracy(confusion_matrix(y_test, y_pred))
-    print("\tAccuracy:", acc1K)
-    
-    print("With full data:")
-    X_train_new = selector.fit_transform(X_train, y_train)  
-    X_test_new = selector.transform(X_test)
-    clf.fit(X_train, y_train)
-    y_pred = clf.predict(X_test_new)
-    acc = accuracy(confusion_matrix(y_test, y_pred))
-    print("\tAccuracy:", acc)
+    acc1K = train_evaluate(
+        X_train[:1000], X_test, y_train[:1000], y_test, key, param, feat_num=20, full_output=False)
+    print('--------------------------------')
+    acc = train_evaluate(
+        X_train, X_test, y_train, y_test, key, param, feat_num=20, full_output=False)
+    # print("\tAccuracy with 1K data:", acc1K)
+    # print("\tAccuracy with full data:", acc)
     
     with open(f"{output_dir}/a1_bonus_features.txt", "a+") as outf:
             outf.write(
-                f'Accuracy with 1K data: {acc1K}\n')
+                f'\nAccuracy with 1K data and top 20 features, {label}: {acc1K}\n')
             outf.write(
-                f'Accuracy with full data: {acc}\n')
+                f'Accuracy with full data and top 20 features, {label}: {acc}\n')
+            
+    ######################################################################
+    # Now we check the accuracies without using 
+    print("\n+++++ Checking accuracies with all features ++++++ ")
 
-    # accuracy_1k = class33_helper(X_1k, X_test, y_1k, y_test, selector, clf)
-    # accuracy_full = class33_helper(
-    #     X_train, X_test, y_train, y_test, selector, clf)
+    acc1K = train_evaluate(
+        X_train[:1000], X_test, y_train[:1000], y_test, key, param, feat_num=0, full_output=False)
+    print('--------------------------------')
+    acc = train_evaluate(
+        X_train, X_test, y_train, y_test, key, param, feat_num=0, full_output=False)
+    # print("\tAccuracy with 1K data:", acc1K)
+    # print("\tAccuracy with full data:", acc)
 
-    # with open(f"{output_dir}/a1_bonus_features.txt", "a+") as outf:
-    #     outf.write(f'Accuracy for 1k: {accuracy_1k:.4f}\n')
-    #     outf.write(f'Accuracy for full dataset: {accuracy_full:.4f}\n')
-
-    # print('++++++++++++++ Section 3.3.3 & 4: intersection ++++++++')
-    # clf = model_selection(iBest)
-    # selector = SelectKBest(f_classif, k=5)
-
-    # # Indices of features from 1K
-    # X_new = selector.fit_transform(X_1k, y_1k)
-    # pp_idx_1K_5 = selector.get_support(indices=True)
-
-    # # Indices of features from full data (from 3.3.1)
-    # pp_idx_full_5 = pp_idx_full[0]
-
-    # # Get their intersection
-    # feature_intersection = [
-    #     idx for idx in pp_idx_1K_5 if idx in set(pp_idx_full_5)]
-
-    # print("Features from 1K: \t{}\nFeatures from full: \t{}\nIntersection: \t\t{}".format(
-    #     pp_idx_1K_5, pp_idx_full_5, feature_intersection))
-
-    # with open(f"{output_dir}/a1_bonus_features.txt", "a+") as outf:
-    #     outf.write(f'Chosen feature intersection: {feature_intersection}\n')
-    #     outf.write(f'Top-5 at higher: {pp_idx_full_5}\n')
-    
+    with open(f"{output_dir}/a1_bonus_features.txt", "a+") as outf:
+                outf.write(
+                    f'\nAccuracy with 1K data with all features, {label}: {acc1K}\n')
+                outf.write(
+                    f'Accuracy with full data with all features, {label}: {acc}\n')
     return
 
 
@@ -366,6 +325,11 @@ if __name__ == "__main__":
         default=os.path.dirname(os.path.dirname(__file__)))
     args = parser.parse_args()
 
+    # Mute warnings
+    if not sys.warnoptions:
+        import warnings
+        warnings.simplefilter("ignore")
+    
     # Load data and split into train and test
     np.random.seed(999)
     input_file, output_dir = args.input2, args.output_dir
@@ -381,6 +345,26 @@ if __name__ == "__main__":
     ##########################################################
     ######### Test and analyze different classifiers #########
     ##########################################################
+    global MODELS, TESTS
+    MODELS = {1: "SGDClassifier",
+              2: "GaussianNB",
+              3: "RandomForestClassifier",
+              4: "MLPClassifier",
+              5: "AdaBoostClassifier",
+              6: "Linear SVC",
+              7: "Gaussian SVC",
+              8: "DecisionTreeClassifier"}
+
+    TESTS = {1: [0],
+             2: [0],
+             3: [1, 5, 10, 15],  # max depths in RandomForestClassifier
+             4: [0.01, 0.05, 0.1, 0.5, 1],  # alphas in MLPClassifier
+             # learning rate in AdaBoostClassifier
+             5: [0.05, 0.1, 1.0, 1.5, 2.0],
+             6: [0],
+             7: [0],
+             8: [None, 'sqrt', 'log2']}  # max_features in DecisionTreeClassifier
+
     # open(f"{output_dir}/a1_bonus_classifiers.txt", "w+").close()
     # classifers(X_train, X_test, y_train, y_test, output_dir) # TODO: activate this before submission
 
@@ -398,8 +382,10 @@ if __name__ == "__main__":
         X, X_new, y, test_size=0.2)
 
     open(f"{output_dir}/a1_bonus_features.txt", "w+").close()
-    features(X_train_new, X_test_new, y_train, y_test, output_dir, clf, new=True)
-    features(X_train, X_test, y_train, y_test, output_dir, clf, new=False)
+    features(X_train_new, X_test_new, y_train, y_test,
+             output_dir, clf, i, param, new=True)
+    features(X_train, X_test, y_train, y_test,
+             output_dir, clf, i, param, new=False)
 
 
     # python3 a1_bonus.py -i1 preproc.json -i2 feats.npz -o bonus_output

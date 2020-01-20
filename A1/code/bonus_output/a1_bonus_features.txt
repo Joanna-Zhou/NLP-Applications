@@ -1,2 +1,12 @@
 Best features' p-values: [3.008265505962943e-199, 0.0, 1.56295247470754e-309, 3.488365838420465e-264]
 New features ' p-values: [2.5975720246486437e-116, 2.5400886496802993e-31, 3.7289726921562545e-12, 1.02631802918051e-09]
+
+Accuracy with 1K data and top 20 features, new: 0.364375
+Accuracy with full data and top 20 features, new: 0.40425
+Accuracy with 1K data with all features, new: 0.371375
+Accuracy with full data with all features, new: 0.43625
+
+Accuracy with 1K data and top 20 features, old: 0.3545
+Accuracy with full data and top 20 features, old: 0.386625
+Accuracy with 1K data with all features, old: 0.370125
+Accuracy with full data with all features, old: 0.39675
