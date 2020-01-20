@@ -2,6 +2,20 @@
     "version": "0.2.0",
     "configurations": [
         {
+            "name": "Debug: a1_bonus",
+            "type": "python",
+            "request": "launch",
+            "program": "a1_bonus.py",
+            "console": "integratedTerminal",
+            "cwd": "code",
+            "args": [
+                "--input",
+                "feats.npz",
+                "--output_dir",
+                "bonus_output"
+            ]
+        },
+        {
             "name": "Debug: a1_classify",
             "type": "python",
             "request": "launch",
