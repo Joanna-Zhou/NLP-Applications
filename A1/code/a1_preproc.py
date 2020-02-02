@@ -114,7 +114,7 @@ def preproc1(comment, steps=range(1, 5)):
                     senttext += token.lemma_ + '/' + token.tag_
             senttext += ' '
         modComm += senttext + '\n'
-        print(senttext + '\n')
+        # print(senttext + '\n')
 
     # print_current(modComm, 5, 'final')
     return modComm
