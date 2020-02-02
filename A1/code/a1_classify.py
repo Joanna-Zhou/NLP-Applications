@@ -24,9 +24,9 @@ from sklearn.feature_selection import chi2
 
 def accuracy(C):
     ''' Compute accuracy given Numpy array confusion matrix C. Returns a floating point value '''
-    correct = C.trace() # diagnol terms are correctly predicted ones
+    correct = C.trace()  # diagnol terms are correctly predicted ones
     total = C.sum()
-    return 0. if total==0. else correct/total
+    return 0. if total == 0. else correct/total
 
 
 def recall(C):
@@ -49,7 +49,6 @@ def precision(C):
         if total != 0.:
             precision[i] = correct[i]/total
     return precision
-
 
 
 def evaluate(i, C, output_dir):
@@ -79,6 +78,7 @@ def evaluate(i, C, output_dir):
         outf.write(f'\tPrecision: {[round(item, 4) for item in prec]}\n')
         outf.write(f'\tConfusion Matrix: \n{C}\n\n')
     return acc
+
 
 def class31(output_dir, X_train, X_test, y_train, y_test):
     ''' This function performs experiment 3.1
@@ -260,7 +260,8 @@ def class33(output_dir, X_train, X_test, y_train, y_test, i, X_1k, y_1k):
 
         # TODO: Check Piazza
         with open(f"{output_dir}/a1_3.3.txt", "a+") as outf:
-            outf.write(f'{k} p-values: {[round(pval, 4) for pval in p_values]}\n')
+            outf.write(
+                f'{k} p-values: {[round(pval, 4) for pval in p_values]}\n')
 
     print('++++++++++++++ Section 3.3.2: accuracies +++++++++++++')
     clf = model_selection(iBest)
@@ -286,9 +287,11 @@ def class33(output_dir, X_train, X_test, y_train, y_test, i, X_1k, y_1k):
     pp_idx_full_5 = pp_idx_full[0]
 
     # Get their intersection
-    feature_intersection = [idx for idx in pp_idx_1K_5 if idx in set(pp_idx_full_5)]
+    feature_intersection = [
+        idx for idx in pp_idx_1K_5 if idx in set(pp_idx_full_5)]
 
-    print("Features from 1K: \t{}\nFeatures from full: \t{}\nIntersection: \t\t{}".format(pp_idx_1K_5, pp_idx_full_5, feature_intersection))
+    print("Features from 1K: \t{}\nFeatures from full: \t{}\nIntersection: \t\t{}".format(
+        pp_idx_1K_5, pp_idx_full_5, feature_intersection))
 
     with open(f"{output_dir}/a1_3.3.txt", "a+") as outf:
         outf.write(f'Chosen feature intersection: {feature_intersection}\n')
@@ -326,7 +329,7 @@ def class34(output_dir, X_train, X_test, y_train, y_test, i):
 
     X, y = np.concatenate((X_train, X_test)), np.concatenate((y_train, y_test))
     kf = KFold(n_splits=5, shuffle=True)
-    accuracies = np.zeros((5, 5)) # 5 folds * 5 models
+    accuracies = np.zeros((5, 5))  # 5 folds * 5 models
     ith_fold = 0
 
     for train_idx, test_idx in kf.split(X):
@@ -349,9 +352,9 @@ def class34(output_dir, X_train, X_test, y_train, y_test, i):
 
     print('Finish fold accuracies:\n{}'.format(accuracies))
 
-    p_values = [] # should be length 4 at the end
+    p_values = []  # should be length 4 at the end
     kfold_accuracies = []
-    best_idx = iBest - 1 # iBest is from 1 to 5, but idx is from 0 to 4
+    best_idx = iBest - 1  # iBest is from 1 to 5, but idx is from 0 to 4
     best_col = accuracies[:, best_idx]
 
     for model_idx in range(5):
@@ -365,13 +368,16 @@ def class34(output_dir, X_train, X_test, y_train, y_test, i):
         # Get mean accuracy
         kfold_accuracies.append(np.mean(model_col))
 
-    print('Finish fold comparicons:\np values:{}\nAverage accuracies of each model:\n{}'.format(p_values, kfold_accuracies))
+    print('Finish fold comparicons:\np values:{}\nAverage accuracies of each model:\n{}'.format(
+        p_values, kfold_accuracies))
 
-    with open(f"{output_dir}/a1_3.4.txt", "w") as outf:
-        outf.write(f'Kfold Accuracies: {[round(acc, 4) for acc in kfold_accuracies]}\n')
+    with open(f"{output_dir}/a1_3.2.txt", "w") as outf:
+        outf.write(
+            f'Kfold Accuracies: {[round(acc, 4) for acc in kfold_accuracies]}\n')
         outf.write(f'p-values: {[round(pval, 4) for pval in p_values]}\n')
         pass
     # TODO: ask "Actually I just tested on both and the one with all the consecutive (>=3) capital letters remaining capitalized (i,e, not replaced by their lemmas) gives slightly higher accuracies with the classifiers - if that's the case, do I have the freedom to keep it that way? Or should I lemmatize them regardless? "
+
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
@@ -398,9 +404,6 @@ if __name__ == "__main__":
     # print(recall(C_test).mean())
     # print("++++++++++++++++++++++++++++++++++++++++++++++")
 
-
-
-
     # TODO: load data and split into train and test.
     np.random.seed(999)
     input_file, output_dir = args.input, args.output_dir
@@ -417,7 +420,6 @@ if __name__ == "__main__":
     open(f"{output_dir}/a1_3.1.txt", "w+").close()
     open(f"{output_dir}/a1_3.2.txt", "w+").close()
     open(f"{output_dir}/a1_3.3.txt", "w+").close()
-    open(f"{output_dir}/a1_3.4.txt", "w+").close()
 
     iBest = class31(output_dir, X_train, X_test, y_train, y_test)
     # iBest = 5

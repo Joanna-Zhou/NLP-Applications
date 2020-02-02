@@ -219,6 +219,8 @@ def setup(dir):
         bgl_file = open('/u/cs401/Wordlists/BristolNorms+GilhoolyLogie.csv', 'r')
         warringer_file = open('/u/cs401/Wordlists/Ratings_Warriner_et_al.csv', 'r')
     except:
+        print("Wrong folder name")
+        return
         subdir_wordlists = os.path.join(args.a1_dir, 'wordlists/')
         bgl_file = open(subdir_wordlists +
                         'BristolNorms+GilhoolyLogie.csv', 'r')
