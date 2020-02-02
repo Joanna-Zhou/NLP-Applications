@@ -229,7 +229,7 @@ def get_new_feats(feats_old, data):
 
 def features(X_train, X_test, y_train, y_test, output_dir, clf, key=None, param=None, new=False):
     """[summary]
-    
+
     Arguments:
         X_train {[type]} -- [description]
         X_test {[type]} -- [description]
@@ -243,27 +243,27 @@ def features(X_train, X_test, y_train, y_test, output_dir, clf, key=None, param=
     else:
         label = "old"
         new_num_feats = 0
-        
+
     print("\n########################## Testing {} features ##########################\n".format(label))
-    with open(f"{output_dir}/a1_bonus_classifiers.txt", "a+") as outf:
+    with open(f"{output_dir}/a1_bonus_features.txt", "a+") as outf:
         # For each classifier, compute results and write the following output:
         outf.write(f'##############################################\n')
         outf.write(f'Testing performance with {label} features\n')
         outf.write(f'##############################################\n')
-    
+
     # If we passed in the new features, we want to know their p-values
     if new:
         print("+++++ Checking p value ++++++ ")
         k = new_num_feats - 173
         selector = SelectKBest(f_classif, k)
         X_new = selector.fit_transform(X_train, y_train)
-        
+
         pp = selector.pvalues_
         p_values_new = pp[173:new_num_feats]
 
         pp_idx = selector.get_support(indices=True)
         p_values_k = pp[pp_idx]
-        
+
         print("The p-values of new features are: \t{},\nCompared to the best {} p-values: \t{}".format(p_values_new, k, p_values_k))
         print("Also compared to the worst p-value: \t{}".format(np.nanmax(pp)))
 
@@ -285,15 +285,15 @@ def features(X_train, X_test, y_train, y_test, output_dir, clf, key=None, param=
         X_train, X_test, y_train, y_test, key, param, feat_num=20, full_output=False)
     # print("\tAccuracy with 1K data:", acc1K)
     # print("\tAccuracy with full data:", acc)
-    
+
     with open(f"{output_dir}/a1_bonus_features.txt", "a+") as outf:
             outf.write(
                 f'\nAccuracy with 1K data and top 20 features, {label}: {acc1K}\n')
             outf.write(
                 f'Accuracy with full data and top 20 features, {label}: {acc}\n')
-            
+
     ######################################################################
-    # Now we check the accuracies without using 
+    # Now we check the accuracies without using
     print("\n+++++ Checking accuracies with all features ++++++ ")
 
     acc1K = train_evaluate(
@@ -329,7 +329,7 @@ if __name__ == "__main__":
     if not sys.warnoptions:
         import warnings
         warnings.simplefilter("ignore")
-    
+
     # Load data and split into train and test
     np.random.seed(999)
     input_file, output_dir = args.input2, args.output_dir
@@ -374,7 +374,7 @@ if __name__ == "__main__":
     # Model used: MLPClassifier with alpha = 0.01
     i, param = 4, 0.01  # chosen from the feature-based ones, as we are considering features now
     clf = model_selection(i, param)
-    
+
     # Get new features
     data = json.load(open(args.input1))
     X_new = get_new_feats(X, data)
@@ -388,5 +388,4 @@ if __name__ == "__main__":
              output_dir, clf, i, param, new=False)
 
 
-    # python3 a1_bonus.py -i1 preproc.json -i2 feats.npz -o bonus_output
-    # python3 a1_bonus.py -i1 preproc_bonus.json -i2 feats.npz -o bonus_output
+    # python3 a1_bonus.py -i1 preproc_bonus.json -i2 feats_bonus.npz -o bonus_output
