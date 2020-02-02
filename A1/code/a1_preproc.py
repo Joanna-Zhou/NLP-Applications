@@ -126,7 +126,7 @@ def main(args):
     # Debug settings
     debug = False
     debug_with_debug_text = False
-    debug_with_sample = True
+    debug_with_sample = False
 
     if debug_with_debug_text:
         debug_text = "What kind of pie? Now I'm hungry!\\nI'm going to admit, as much as I love the /r/women subreddit, I want to indulge in the less serious things about being girly.\\nI agree with the rest of the group; I've got like 3 or 4 bras that I wear all the time, but I have like 10...some are more pretty than functional.\\n\\nAlso, I just want to say that I'm pretty excited about this subreddit!\\nHonestly, I dab a tiny bit of [MAC foundation stick](http://www.maccosmetics.com/product/spp.tmpl?CATEGORY_ID=CAT158&amp;PRODUCT_ID=646) and blend it in.  It works just fine for me.  \\n\\nI have used UD's product, and I did really like it, but I ran out ages ago and now just use MAC.\\nHehe, I second this. I adore Clueless."
