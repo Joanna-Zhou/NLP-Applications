@@ -256,7 +256,7 @@ def class33(output_dir, X_train, X_test, y_train, y_test, i, X_1k, y_1k):
         pp = selector.pvalues_
         pp_idx = selector.get_support(indices=True)
         pp_idx_full.append(pp_idx)
-        p_values = pp[pp_idx]
+        p_values = pp
 
         # TODO: Check Piazza
         with open(f"{output_dir}/a1_3.3.txt", "a+") as outf:
@@ -348,6 +348,10 @@ def class34(output_dir, X_train, X_test, y_train, y_test, i):
         accuracies[ith_fold][4] = class34_helper(
             model_selection(5), XX_train, XX_test, yy_train, yy_test)
 
+        with open(f"{output_dir}/a1_3.4.txt", "a+") as outf:
+            outf.write(
+                f'Kfold Accuracies: {[round(acc, 4) for acc in accuracies[ith_fold]]}\n')
+
         ith_fold += 1
 
     print('Finish fold accuracies:\n{}'.format(accuracies))
@@ -371,11 +375,10 @@ def class34(output_dir, X_train, X_test, y_train, y_test, i):
     print('Finish fold comparicons:\np values:{}\nAverage accuracies of each model:\n{}'.format(
         p_values, kfold_accuracies))
 
-    with open(f"{output_dir}/a1_3.4.txt", "w") as outf:
-        outf.write(
-            f'Kfold Accuracies: {[round(acc, 4) for acc in kfold_accuracies]}\n')
+    with open(f"{output_dir}/a1_3.4.txt", "a+") as outf:
+        # outf.write(
+            # f'Kfold Accuracies: {[round(acc, 4) for acc in kfold_accuracies]}\n')
         outf.write(f'p-values: {[round(pval, 4) for pval in p_values]}\n')
-        pass
     # TODO: ask "Actually I just tested on both and the one with all the consecutive (>=3) capital letters remaining capitalized (i,e, not replaced by their lemmas) gives slightly higher accuracies with the classifiers - if that's the case, do I have the freedom to keep it that way? Or should I lemmatize them regardless? "
 
 
@@ -420,10 +423,10 @@ if __name__ == "__main__":
     open(f"{output_dir}/a1_3.1.txt", "w+").close()
     open(f"{output_dir}/a1_3.2.txt", "w+").close()
     open(f"{output_dir}/a1_3.3.txt", "w+").close()
+    open(f"{output_dir}/a1_3.4.txt", "w+").close()
 
     iBest = class31(output_dir, X_train, X_test, y_train, y_test)
-    # iBest = 5
-    X_1k, y_1k = X_train[:1000], y_train[:1000]
+    # iBest, X_1k, y_1k = 5, X_train[:1000], y_train[:1000] # Just for debugging
     X_1k, y_1k = class32(output_dir, X_train, X_test, y_train, y_test, iBest)
     class33(output_dir, X_train, X_test, y_train, y_test, iBest, X_1k, y_1k)
     class34(output_dir, X_train, X_test, y_train, y_test, iBest)
