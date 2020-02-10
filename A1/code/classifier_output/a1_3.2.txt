@@ -3,3 +3,5 @@
 10000: 0.4251
 15000: 0.4189
 20000: 0.4281
+
+As the number of training samples increases, the accuracy generally increases (though with some wiggle at 15000). This is very much expected - with more input data, we likely have more diverse features and the model is less likely to overfit. However, though a larger training set likely decreases the variance (overfitting), the accuracy is still capped by the bias in the data that can't be captured by our model regardless of the training data size and number of iterations.
