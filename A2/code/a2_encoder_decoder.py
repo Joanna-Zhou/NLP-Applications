@@ -13,14 +13,43 @@ from a2_abcs import EncoderBase, DecoderBase, EncoderDecoderBase
 class Encoder(EncoderBase):
 
     def init_submodules(self):
+        '''Initialize the parameterized submodules of this network'''
         # initialize parameterized submodules here: rnn, embedding
-        # using: self.source_vocab_size, self.word_embedding_size, self.pad_id,
-        # self.dropout, self.cell_type, self.hidden_state_size,
-        # self.num_hidden_layers
+        # using:
         # cell_type will be one of: ['lstm', 'gru', 'rnn']
         # relevant pytorch modules:
-        # torch.nn.{LSTM, GRU, RNN, Embedding}
-        assert False, "Fill me"
+        #   torch.nn.{LSTM, GRU, RNN, Embedding}
+
+        # embedding : torch.nn.Embedding
+        #     A layer that extracts learned token embeddings for each index in a token sequence.
+        #     It must not learn an embedding for padded tokens.
+        self.embedding = nn.Embedding(self.source_vocab_size,
+                                      self.word_embedding_size,
+                                      padding_idx=self.pad_id)
+
+        # rnn : {torch.nn.RNN, torch.nn.GRU, torch.nn.LSTM}
+        #     A layer corresponding to the recurrent neural network that
+        #     processes source word embeddings. It must be bidirectional.
+        if self.cell_type == 'lstm':
+            self.rnn = nn.LSTM(self.word_embedding_size,
+                               self.hidden_state_size,
+                               self.num_hidden_layers,
+                               dropout=self.dropout,
+                               bidirectional=True)
+        elif self.cell_type == 'gru':
+            self.rnn = nn.GRU(self.word_embedding_size,
+                              self.hidden_state_size,
+                              self.num_hidden_layers,
+                               dropout=self.dropout,
+                               bidirectional=True)
+        elif self.cell_type == 'rnn':
+            self.rnn = nn.RNN(self.word_embedding_size,
+                              self.hidden_state_size,
+                              self.num_hidden_layers,
+                              dropout=self.dropout,
+                              bidirectional=True)
+        else:
+            assert False, "Cell type not within provided set of types"
 
     def get_all_rnn_inputs(self, F):
         # compute input vectors for each source transcription.
@@ -152,7 +181,7 @@ class EncoderDecoder(EncoderDecoderBase):
         # DecoderBase, respectively.
         # using: self.source_vocab_size, self.source_pad_id,
         # self.word_embedding_size, self.encoder_num_hidden_layers,
-        # self.encoder_hidden_size, self.encoder_dropout, self.cell_type,
+        # self.encoder_self.hidden_state_size, self.encoder_dropout, self.cell_type,
         # self.target_vocab_size, self.target_eos
         # Recall that self.target_eos doubles as the decoder pad id since we
         # never need an embedding for it
