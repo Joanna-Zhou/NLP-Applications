@@ -4,17 +4,3 @@ Accuracy for 1k: 0.3129
 Accuracy for full dataset: 0.3448
 Chosen feature intersection: [11, 83, 149]
 Top-5 at higher: [  2  11  83  96 149]
-
-(a).
-- Feature 11: Number of proper nouns - seems like this can do with how conservative someone is (sorry if I am completely wrong or stereotyping people)
-- Feature 83 (83-29 = 54): liwc_money - I guess there's also something about tax, social welfare, and these things that people react differently or talk more or less frequently depending on their political stand.
-- Feature 149: (149-29 = 120): receptiviti_insecure - this is very related to the previous one, money, as well. I assume that how secure you feel in the society does have a huge impact on your political stand (e.g. "old money" who has already had a good stand in reputation and financial status might tend towards right).
-- Again, apologies if I had some misunderstandings on this.
-
-(b)
-P-values are generally lower given more data. This is because, the more data we have, the more information we can use to conclude the "significance" or "relationship" between each feature and class - just imagine drawing more lines (each data associates some feature-class pairs) between them.
-
-(c)
-- Feature 11, 83, and 149 have already been listed in (a)
-- Feature 2: first-person pronouns - perhaps some people care more about themselves or have stronger opinions that they want to share (or rant). I would imagine that this distinguishes people with a strong political stand (left or right) from those who don't (center or alt).
-- Feature 96 (96-29 = 67): liwc_quant (quantifiers, as a subsection of grammar) - I would imagine that using more quantifiers shows that some people care more about economics and politics (which would have impact on the society), as in, they care more about scaling than others. But again, I am not very familiar with politics :(
