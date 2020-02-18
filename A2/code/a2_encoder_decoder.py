@@ -55,18 +55,26 @@ class Encoder(EncoderBase):
         # compute input vectors for each source transcription.
         # F is shape (S, N)
         # x (output) is shape (S, N, I)
-        assert False, "Fill me"
+        x = self.embedding(F)
+        print("-----\nIn get_all_rnn_inputs, F: {} -> x: {}\n-----", F.shape, x.shape)
+        return x
 
     def get_all_hidden_states(self, x, F_lens, h_pad):
+        # Pack hidden states
+        x_packed = torch.nn.utils.rnn.pack_padded_sequence(x, F_lens)
         # compute all final hidden states for provided input sequence.
-        # make sure you handle padding properly!
+        outputs, hidden = self.rnn(x_packed)
+        # Unpack hidden states
+        outputs, _ = torch.nn.utils.rnn.pad_packed_sequence(outputs)
+        
         # x is of shape (S, N, I)
-        # F_lens is of shape (N,)
-        # h_pad is a float
         # h (output) is of shape (S, N, 2 * H)
-        # relevant pytorch modules:
-        # torch.nn.utils.rnn.{pad_packed,pack_padded}_sequence
-        assert False, "Fill me"
+        print("-----\nIn get_all_hidden_states, x: {} -> h: {}\n-----", x.shape, h.shape)
+        
+        # Sum the both forward and backward
+        # outputs = outputs[:, :, :self.hidden_size] + outputs[:, :, self.hidden_size:]
+
+        return hidden
 
 
 class DecoderWithoutAttention(DecoderBase):
