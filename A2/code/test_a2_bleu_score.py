@@ -14,11 +14,9 @@ import a2_bleu_score
 @pytest.mark.parametrize("ids", [True, False])
 def test_bleu(ids):
     reference = '''\
-it is a guide to action that ensures that the military will always heed
-party commands'''.strip().split()
+it is a guide to action that ensures that the military will always heed party commands'''.strip().split()
     candidate = '''\
-it is a guide to action which ensures that the military always obeys the
-commands of the party'''.strip().split()
+it is a guide to action which ensures that the military always obeys the commands of the party'''.strip().split()
     if ids:
         # should work with token ids (ints) as well
         reference = [hash(word) for word in reference]

@@ -26,8 +26,10 @@ def grouper(seq, n):
     ngrams : list
     '''
     ngrams = []
-    for i in range(len(seq) - n):
+    for i in range(len(seq) - n + 1):
         ngrams.append(seq[i: i + n])
+
+    # print("{}-gram generated: {}".format(n, ngrams))
     return ngrams
 
 def n_gram_precision(reference, candidate, n):
@@ -52,12 +54,17 @@ def n_gram_precision(reference, candidate, n):
     reference_ngrams = grouper(reference, n)
     candidate_ngrams = grouper(candidate, n)
     candidate_match = 0
-    candidate_all = len(candidate)
+    candidate_all = len(candidate_ngrams)
 
     for cand_ngram in candidate_ngrams:
-        if any([cand_ngram in ref_ngram for ref_ngram in reference_ngrams]):
+        print(cand_ngram, cand_ngram in reference_ngrams)
+        if cand_ngram in reference_ngrams:
             candidate_match += 1
-    print("{}-gram precision: {}/{}".format(n, candidate_match, candidate_all))
+        # Capped version, which we don't use here
+        # if any([cand_ngram in reference_ngrams]):
+        #     candidate_match += 1
+
+    # print("{}-gram precision: {}/{}".format(n, candidate_match, candidate_all))
     return candidate_match / candidate_all
 
 
