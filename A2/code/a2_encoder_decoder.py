@@ -23,7 +23,7 @@ class Encoder(EncoderBase):
         # embedding : torch.nn.Embedding
         #     A layer that extracts learned token embeddings for each index in a token sequence.
         #     It must not learn an embedding for padded tokens.
-        self.embedding = nn.Embedding(self.source_vocab_size,
+        self.embedding = torch.nn.Embedding(self.source_vocab_size,
                                       self.word_embedding_size,
                                       padding_idx=self.pad_id)
 
@@ -31,31 +31,35 @@ class Encoder(EncoderBase):
         #     A layer corresponding to the recurrent neural network that
         #     processes source word embeddings. It must be bidirectional.
         if self.cell_type == 'lstm':
-            self.rnn = nn.LSTM(self.word_embedding_size,
+            self.rnn = torch.nn.LSTM(self.word_embedding_size,
                                self.hidden_state_size,
                                self.num_hidden_layers,
                                dropout=self.dropout,
+                               batch_first=True,
                                bidirectional=True)
         elif self.cell_type == 'gru':
-            self.rnn = nn.GRU(self.word_embedding_size,
-                              self.hidden_state_size,
-                              self.num_hidden_layers,
-                               dropout=self.dropout,
-                               bidirectional=True)
-        elif self.cell_type == 'rnn':
-            self.rnn = nn.RNN(self.word_embedding_size,
+            self.rnn = torch.nn.GRU(self.word_embedding_size,
                               self.hidden_state_size,
                               self.num_hidden_layers,
                               dropout=self.dropout,
+                              batch_first=True,
+                               bidirectional=True)
+        elif self.cell_type == 'rnn':
+            self.rnn = torch.nn.RNN(self.word_embedding_size,
+                              self.hidden_state_size,
+                              self.num_hidden_layers,
+                              dropout=self.dropout,
+                              batch_first=True,
                               bidirectional=True)
         else:
             assert False, "Cell type not within provided set of types"
 
     def get_all_rnn_inputs(self, F):
         # compute input vectors for each source transcription.
+        x = self.embedding(F)
+
         # F is shape (S, N)
         # x (output) is shape (S, N, I)
-        x = self.embedding(F)
         print("-----\nIn get_all_rnn_inputs, F: {} -> x: {}\n-----".format(F.shape, x.shape))
         return x
 
@@ -66,11 +70,11 @@ class Encoder(EncoderBase):
         outputs, hidden = self.rnn(x_packed)
         # Unpack hidden states
         outputs, _ = torch.nn.utils.rnn.pad_packed_sequence(outputs)
-        
+
         # x is of shape (S, N, I)
         # h (output) is of shape (S, N, 2 * H)
-        print("-----\nIn get_all_hidden_states, x: {} -> h: {}\n-----".format(x.shape, h.shape))
-        
+        print("-----\nIn get_all_hidden_states, x: {} -> h: {}\n-----".format(x.shape, hidden.shape))
+
         # Sum the both forward and backward
         # outputs = outputs[:, :, :self.hidden_size] + outputs[:, :, self.hidden_size:]
 
@@ -81,13 +85,42 @@ class DecoderWithoutAttention(DecoderBase):
     '''A recurrent decoder without attention'''
 
     def init_submodules(self):
-        # initialize parameterized submodules: embedding, cell, ff
-        # using: self.target_vocab_size, self.word_embedding_size, self.pad_id,
-        # self.hidden_state_size, self.cell_type
-        # relevant pytorch modules:
-        # cell_type will be one of: ['lstm', 'gru', 'rnn']
-        # torch.nn.{Embedding,Linear,LSTMCell,RNNCell,GRUCell}
-        assert False, "Fill me"
+        # embedding : torch.nn.Embedding
+        #     A layer that extracts learned token embeddings for each index in
+        #     a token sequence. It must not learn an embedding for padded tokens.
+        self.embedding = torch.nn.Embedding(self.target_vocab_size,
+                                      self.word_embedding_size,
+                                      padding_idx=self.pad_id)
+
+        # cell : {torch.nn.RNNCell, torch.nn.GRUCell, torch.nn.LSTMCell}
+        #     A layer corresponding to the recurrent neural network that
+        #     processes target word embeddings into hidden states. We only define
+        #     one cell and one layer
+        if self.cell_type == 'lstm':
+            self.cell = torch.nn.LSTMCell(self.word_embedding_size + self.hidden_state_size,
+                               self.hidden_state_size,
+                               dropout=self.dropout,
+                               batch_first=True)
+        elif self.cell_type == 'gru':
+            self.cell = torch.nn.GRUCell(self.word_embedding_size + self.hidden_state_size,
+                              self.hidden_state_size,
+                               dropout=self.dropout,
+                               batch_first=True)
+        elif self.cell_type == 'rnn':
+            self.cell = torch.nn.RNNCell(self.word_embedding_size + self.hidden_state_size,
+                              self.hidden_state_size,
+                              dropout=self.dropout,
+                              batch_first=True)
+        else:
+            assert False, "Cell type not within provided set of types"
+
+        # ff : torch.nn.Linear
+        #     A fully-connected layer that converts the decoder hidden state
+        #     into an un-normalized log probability distribution over target
+        #     words
+        self.ff = torch.nn.Linear(in_features=self.hidden_state_size,
+                            out_features=self.target_vocab_size)
+
 
     def get_first_hidden_state(self, h, F_lens):
         # build decoder's first hidden state. Ensure it is derived from encoder
