@@ -57,7 +57,7 @@ def n_gram_precision(reference, candidate, n):
     for cand_ngram in candidate_ngrams:
         if any([cand_ngram in ref_ngram for ref_ngram in reference_ngrams]):
             candidate_match += 1
-
+    print("{}-gram precision: {}/{}".format(n, candidate_match, candidate_all))
     return candidate_match / candidate_all
 
 

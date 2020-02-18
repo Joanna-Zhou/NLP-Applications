@@ -56,7 +56,7 @@ class Encoder(EncoderBase):
         # F is shape (S, N)
         # x (output) is shape (S, N, I)
         x = self.embedding(F)
-        print("-----\nIn get_all_rnn_inputs, F: {} -> x: {}\n-----", F.shape, x.shape)
+        print("-----\nIn get_all_rnn_inputs, F: {} -> x: {}\n-----".format(F.shape, x.shape))
         return x
 
     def get_all_hidden_states(self, x, F_lens, h_pad):
@@ -69,7 +69,7 @@ class Encoder(EncoderBase):
         
         # x is of shape (S, N, I)
         # h (output) is of shape (S, N, 2 * H)
-        print("-----\nIn get_all_hidden_states, x: {} -> h: {}\n-----", x.shape, h.shape)
+        print("-----\nIn get_all_hidden_states, x: {} -> h: {}\n-----".format(x.shape, h.shape))
         
         # Sum the both forward and backward
         # outputs = outputs[:, :, :self.hidden_size] + outputs[:, :, self.hidden_size:]
