@@ -54,8 +54,8 @@ def n_gram_precision(reference, candidate, n):
     candidate_match = 0
     candidate_all = len(candidate)
 
-    for c_ngram in candidate_ngrams:
-        if any([cand_ngram in ref_ngram for ref_ngram in references_ngrams]):
+    for cand_ngram in candidate_ngrams:
+        if any([cand_ngram in ref_ngram for ref_ngram in reference_ngrams]):
             candidate_match += 1
 
     return candidate_match / candidate_all
@@ -81,7 +81,7 @@ def brevity_penalty(reference, candidate):
     reference_len, candidate_len = len(reference), len(candidate)
     brevity = reference_len / candidate_len
 
-    return 1 if brevity < 1 else exp(1 - brev)
+    return 1 if brevity < 1 else exp(1 - brevity)
 
 
 def BLEU_score(reference, hypothesis, n):
