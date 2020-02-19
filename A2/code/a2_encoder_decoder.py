@@ -123,32 +123,46 @@ class DecoderWithoutAttention(DecoderBase):
 
 
     def get_first_hidden_state(self, h, F_lens):
+        '''Get the initial decoder hidden state, prior to the first input'''
         # build decoder's first hidden state. Ensure it is derived from encoder
-        # hidden state that has processed the entire sequence in each
-        # direction:
+        # hidden state that has processed the entire sequence in each direction:
+        hidden_state_mid = self.hidden_state_size // 2
+
         # - Populate indices 0 to self.hidden_state_size // 2 - 1 (inclusive)
         #   with the hidden states of the encoder's forward direction at the
         #   highest index in time *before padding*
+        forward = h[-1, 0:self.hidden_state_mid, :]
+
         # - Populate indices self.hidden_state_size // 2 to
         #   self.hidden_state_size - 1 (inclusive) with the hidden states of
         #   the encoder's backward direction at time t=0
-        # h is of shape (S, N, 2 * H)
+        backward = h[0, hidden_state_mid:self.hidden_state_size, :]
+
+        # TODO: check concatination dimension
+        htilde_tm1 = torch.cat((forward, backward), dim=1)
+        # h is of shape(S, N, 2 * H)
         # F_lens is of shape (N,)
         # htilde_tm1 (output) is of shape (N, 2 * H)
-        # relevant pytorch modules: torch.cat
-        assert False, "Fill me"
+        print("-----\nIn get_first_hidden_state, h: {} -> htilde_tm1: {}\n-----".format(h.shape, htilde_tm1.shape))
+
+        return htilde_tm1
 
     def get_current_rnn_input(self, E_tm1, htilde_tm1, h, F_lens):
         # determine the input to the rnn for *just* the current time step.
-        # No attention.
+        embedded = self.embedding(E_tm1)
+        xtilde_t = torch.stack((embedded, htilde_tm1))
+
         # E_tm1 is of shape (N,)
         # htilde_tm1 is of shape (N, 2 * H) or a tuple of two of those (LSTM)
         # h is of shape (S, N, 2 * H)
         # F_lens is of shape (N,)
         # xtilde_t (output) is of shape (N, Itilde)
-        assert False, "Fill me"
+        print("-----\nIn get_current_rnn_input, htilde_tm1: {} -> xtilde_t: {}\n-----".format(
+            htilde_tm1.shape, xtilde_t.shape))
 
-    def get_current_hidden_state(self, xtilde_t, htilde_tm1):
+        return xtilde_t
+
+    def get_current_hidden_state(self                 , xtilde_t, htilde_tm1):
         # update the previous hidden state to the current hidden state.
         # xtilde_t is of shape (N, Itilde)
         # htilde_tm1 is of shape (N, 2 * H) or a tuple of two of those (LSTM)

@@ -15,6 +15,10 @@ code fails to run there, you'll get no pity marks! You've been warned!
 Alternatively, you might be on teach, but called 'python3' instead of
 'python3.7'. Use the latter!
 '''
+
+# TODO: Remember, s = 1:S or 1:T, it is both the "time step" and the "token index" in each sequence, as we process 1 token per time step anyway
+# TODO: While n is the n-th sequence in the batch, not the n-th word in a sequence!
+
 if (
         platform.python_version() != '3.7.4' or
         not torch.__version__.startswith('1.2.0')):
@@ -332,7 +336,7 @@ class DecoderBase(torch.nn.Module, metaclass=abc.ABCMeta):
                 f'E_tm1 values must be between '
                 f'[0, {self.source_vocab_size - 1}]')
 
-    def forward(self, E_tm1, htilde_tm1, h, F_lens):
+    def forward(self, E_tm1, htilde_tm1, h, F_lens): # TODO: this is the main loop for decoder w/o attention
         self.check_input(E_tm1, htilde_tm1, h, F_lens)
         xtilde_t = self.get_current_rnn_input(E_tm1, htilde_tm1, h, F_lens)
         if htilde_tm1 is None:
