@@ -5,6 +5,8 @@
 # For initialization only, run `sh a2_run.sh local init` or `sh a2_run.sh cs init`
 # For a debug run, run `sh a2_run.sh local skip wo` (or `w`, `all`)
 
+# For now, i should only need `sh a2_run.sh local init` and `sh a2_run.sh local skip wo`
+
 if [ "$1" == "local" ]; then
     echo '--- Running locally ---'
     TRAIN=/Users/joanna.zyz/NLP-Applications/A2/data/Hansard/Training/
@@ -24,8 +26,6 @@ if [ "$2" == "init" ]; then
     python3.7 a2_run.py split $TRAIN train.txt.gz dev.txt.gz
 else # "skip"
     echo '--- Preparation skipped ---'
-    TRAIN=/h/u1/cs401/A2/data/Hansard/Training/
-    TEST=/h/u1/cs401/A2/data/Hansard/Testing/
 fi
 
 

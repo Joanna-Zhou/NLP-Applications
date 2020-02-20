@@ -99,19 +99,13 @@ class DecoderWithoutAttention(DecoderBase):
         #     one cell and one layer
         if self.cell_type == 'lstm':
             self.cell = torch.nn.LSTMCell(self.word_embedding_size + 2 * self.hidden_state_size,
-                                          2 * self.hidden_state_size,
-                                          dropout=self.dropout,
-                                          batch_first=True)
+                                          2 * self.hidden_state_size)
         elif self.cell_type == 'gru':
             self.cell = torch.nn.GRUCell(self.word_embedding_size + 2 * self.hidden_state_size,
-                                         2 * self.hidden_state_size,
-                                         dropout=self.dropout,
-                                         batch_first=True)
+                                         2 * self.hidden_state_size)
         elif self.cell_type == 'rnn':
             self.cell = torch.nn.RNNCell(self.word_embedding_size + 2 * self.hidden_state_size,
-                                         2 * self.hidden_state_size,
-                                         dropout=self.dropout,
-                                         batch_first=True)
+                                         2 * self.hidden_state_size)
         else:
             assert False, "Cell type not within provided set of types"
 
@@ -318,7 +312,7 @@ class EncoderDecoder(EncoderDecoderBase):
                                      pad_id=self.source_pad_id,
                                      word_embedding_size=self.word_embedding_size,
                                      num_hidden_layers=self.encoder_num_hidden_layers,
-                                     hidden_state_size=encoder_hidden_size,
+                                     hidden_state_size=self.encoder_hidden_size,
                                      dropout=self.encoder_dropout,
                                      cell_type=self.cell_type)
 
