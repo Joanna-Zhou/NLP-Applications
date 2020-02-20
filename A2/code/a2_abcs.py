@@ -343,6 +343,7 @@ class DecoderBase(torch.nn.Module, metaclass=abc.ABCMeta):
             htilde_tm1 = self.get_first_hidden_state(h, F_lens)
             if self.cell_type == 'lstm':
                 # initialize cell state with zeros
+                # TODO: This concatination is for LSTM only
                 htilde_tm1 = (htilde_tm1, torch.zeros_like(htilde_tm1))
         h_t = self.get_current_hidden_state(xtilde_t, htilde_tm1)
         if self.cell_type == 'lstm':

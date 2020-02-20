@@ -263,7 +263,6 @@ class DecoderWithAttention(DecoderWithoutAttention):
 
         self.ff = torch.nn.Linear(in_features=self.hidden_state_size,
                                   out_features=self.target_vocab_size)
-        
 
     def get_first_hidden_state(self, h, F_lens):
         # same as before, but initialize to zeros
@@ -315,7 +314,19 @@ class EncoderDecoder(EncoderDecoderBase):
         # self.target_vocab_size, self.target_eos
         # Recall that self.target_eos doubles as the decoder pad id since we
         # never need an embedding for it
-        assert False, "Fill me"
+        self.encoder = encoder_class(source_vocab_size=self.source_vocab_size,
+                                     pad_id=self.source_pad_id,
+                                     word_embedding_size=self.word_embedding_size,
+                                     num_hidden_layers=self.encoder_num_hidden_layers,
+                                     hidden_state_size=encoder_hidden_size,
+                                     dropout=self.encoder_dropout,
+                                     cell_type=self.cell_type)
+
+        self.decoder = decoder_class(target_vocab_size=self.target_vocab_size,
+                                     pad_id=self.source_pad_id,
+                                     word_embedding_size=self.word_embedding_size,
+                                     hidden_state_size=self.encoder_hidden_size,
+                                     cell_type=self.cell_type)  # TODO: Check if this should be the same as encoder hidden size
 
     def get_logits_for_teacher_forcing(self, h, F_lens, E):
         # get logits over entire E. logits predict the *next* word in the
