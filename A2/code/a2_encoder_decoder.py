@@ -35,21 +35,18 @@ class Encoder(EncoderBase):
                                      self.hidden_state_size,
                                      self.num_hidden_layers,
                                      dropout=self.dropout,
-                                     batch_first=True,
                                      bidirectional=True)
         elif self.cell_type == 'gru':
             self.rnn = torch.nn.GRU(self.word_embedding_size,
                                     self.hidden_state_size,
                                     self.num_hidden_layers,
                                     dropout=self.dropout,
-                                    batch_first=True,
                                     bidirectional=True)
         elif self.cell_type == 'rnn':
             self.rnn = torch.nn.RNN(self.word_embedding_size,
                                     self.hidden_state_size,
                                     self.num_hidden_layers,
                                     dropout=self.dropout,
-                                    batch_first=True,
                                     bidirectional=True)
         else:
             assert False, "Cell type not within provided set of types"
@@ -240,18 +237,15 @@ class DecoderWithAttention(DecoderWithoutAttention):
         if self.cell_type == 'lstm':
             self.cell = torch.nn.LSTMCell(self.word_embedding_size + 2 * self.hidden_state_size,
                                           2 * self.hidden_state_size,
-                                          dropout=self.dropout,
-                                          batch_first=True)
+                                          dropout=self.dropout)
         elif self.cell_type == 'gru':
             self.cell = torch.nn.GRUCell(self.word_embedding_size + 2 * self.hidden_state_size,
                                          2 * self.hidden_state_size,
-                                         dropout=self.dropout,
-                                         batch_first=True)
+                                         dropout=self.dropout)
         elif self.cell_type == 'rnn':
             self.cell = torch.nn.RNNCell(self.word_embedding_size + 2 * self.hidden_state_size,
                                          2 * self.hidden_state_size,
-                                         dropout=self.dropout,
-                                         batch_first=True)
+                                         dropout=self.dropout)
         else:
             assert False, "Cell type not within provided set of types"
 
@@ -323,16 +317,55 @@ class EncoderDecoder(EncoderDecoderBase):
                                      cell_type=self.cell_type)  # TODO: Check if this should be the same as encoder hidden size
 
     def get_logits_for_teacher_forcing(self, h, F_lens, E):
-        # get logits over entire E. logits predict the *next* word in the
-        # sequence.
+        # get logits over entire E. logits predict the *next* word in the sequence.
         # h is of shape (S, N, 2 * H)
-        # F_lens is of shape (N,)
-        # E is of shape (T, N)
         # logits (output) is of shape (T - 1, N, Vo)
-        # relevant pytorch modules: torch.{zero_like,stack}
+
         # hint: recall an LSTM's cell state is always initialized to zero.
         # Note logits sequence dimension is one shorter than E (why?)
-        assert False, "Fill me"
+
+        # F_lens is of shape (N,)
+        batch_size = F_lens.shape[0]
+
+        # F_lens is of shape (N,)
+        T, N = E.shape[0], E.shape[1]
+        # TODO: Thank about how/if we need to pad
+        # A float tensor of shape ``(S, N, 2 * self.encoder_hidden_size)`` of
+        # hidden states of the encoder. ``h[s, n, i]`` is the
+        # ``i``-th index of the encoder RNN's last hidden state at time ``s``
+        # of the ``n``-th sequence in the batch. The states of the
+        # encoder have been right-padded such that ``h[F_lens[n]:, n]``
+        # should all be ignored.
+
+        # Initilize hidden states
+        htilde_tm1 = self.decoder.get_first_hidden_state(h, F_lens)
+        if self.cell_type == 'lstm':
+            htilde_tm1 = (htilde_tm1, torch.zeros_like(htilde_tm1))
+
+        # Initialize output results (i.e., just logits here, no token needed)
+        logits_list = []
+
+        for t in range(T-1):
+            # The following "forward" method is modified from the decoder's forward()
+            E_tm1 = E[t, :]  # ! This is the teacher enforcing part, where E_tm1 <- E
+            xtilde_t = self.decoder.get_current_rnn_input(
+                E_tm1, htilde_tm1, h, F_lens)
+            htilde_tm1 = self.decoder.get_current_hidden_state(
+                xtilde_t, htilde_tm1)
+            if self.cell_type == 'lstm':
+                logits_t = self.get_current_logits(htilde_tm1[0])
+            else:
+                logits_t = self.get_current_logits(htilde_tm1)
+
+            # TODO: Think about if attention is used here
+            # -- it shouldn't (should be included in get_current_hidden_state already)
+
+        logits = (torch.cat(logits_list, dim=1) # Dimension of concatenation is T
+        return logits
+        # ? https://github.com/JoshFeldman95/translation/blob/7fba309e6914ee4235e95fa2ffd3294f7db5d6a1/models.py
+        # ? https://github.com/SunSiShining/CopyRNN-Pytorch/blob/2e37cce64d44e7c99a624e7f47c1b9c57094dadf/pykp/model.py
+        # ? https://github.com/sh951011/PyTorch-Seq2seq/blob/66c4c2bae6b8f432f87bf532c3004de2cee56f99/models/decoder.py
+
 
     def update_beam(self, htilde_t, b_tm1_1, logpb_tm1, logpy_t):
         # perform the operations within the psuedo-code's loop in the

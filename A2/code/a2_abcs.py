@@ -338,15 +338,15 @@ class DecoderBase(torch.nn.Module, metaclass=abc.ABCMeta):
                 f'E_tm1 values must be between '
                 f'[0, {self.source_vocab_size - 1}]')
 
-    def forward(self, E_tm1, htilde_tm1, h, F_lens): # TODO: this is the main loop for decoder w/o attention
+
+    def forward(self, E_tm1, htilde_tm1, h, F_lens):
         self.check_input(E_tm1, htilde_tm1, h, F_lens)
-        xtilde_t = self.get_current_rnn_input(E_tm1, htilde_tm1, h, F_lens)
         if htilde_tm1 is None:
             htilde_tm1 = self.get_first_hidden_state(h, F_lens)
             if self.cell_type == 'lstm':
                 # initialize cell state with zeros
-                # TODO: This concatination is for LSTM only
                 htilde_tm1 = (htilde_tm1, torch.zeros_like(htilde_tm1))
+        xtilde_t = self.get_current_rnn_input(E_tm1, htilde_tm1, h, F_lens)
         h_t = self.get_current_hidden_state(xtilde_t, htilde_tm1)
         if self.cell_type == 'lstm':
             logits_t = self.get_current_logits(h_t[0])

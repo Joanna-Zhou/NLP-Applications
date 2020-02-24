@@ -71,3 +71,8 @@ fi
 
 # # 6.
 # python3.7 a2_run.py test $TEST vocab.e.gz vocab.f.gz model_w_att.pt.gz --with-attention --device cuda
+
+# Code from cs server: /h/u1/cs401/A2/code
+# Copy from server to local: 
+#   Folder: scp -r zhouyiz2@teach.cs.utoronto.ca:/h/u1/cs401/A2/code Downloads/
+#   File: scp zhouyiz2@teach.cs.utoronto.ca:/h/u1/cs401/A2/code/a2_abcs.py Downloads/
