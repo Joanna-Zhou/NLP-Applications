@@ -90,9 +90,20 @@ def compute_batch_total_bleu(E_ref, E_cand, target_sos, target_eos):
         The sum total BLEU score for across all elements in the batch. Use
         n-gram precision 4.
     '''
-    # you can use E_ref.tolist() to convert the LongTensor to a python list
-    # of numbers
-    assert False, "Fill me"
+    refs, cands = E_ref.tolist(), E_cand.tolist()
+    batchsize = E_ref.shape[1]
+    score, ngram = 0, 4
+
+    for n in range(batchsize):
+        ref, cand = E_ref[n], E_cand[n]
+        #? https://github.com/ryosuke071111/NLP_DLbasic/blob/2644451492e23648b8cded90c7edfb31438623ff/chap3/演習/materials/.ipynb_checkpoints/lecture_chap3_exercise_answer-checkpoint.ipynb
+        #TODO: check if the following should include the outer [] or not
+        ref = [ref[ref.index(target_sos):ref.index(target_eos)]]
+        cand = [cand[cand.index(target_sos):cand.index(target_eos)]]
+
+        score += a2_bleu_score.BLEU_score(ref, cand, ngram)
+
+    return score
 
 
 def compute_average_bleu_over_dataset(

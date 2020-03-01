@@ -69,6 +69,12 @@ class Encoder(EncoderBase):
         # Unpack hidden states
         outputs, _ = torch.nn.utils.rnn.pad_packed_sequence(outputs)
 
+        # # TODO: check if we need this
+        # print("-----\nIn get_all_hidden_states, hidden before concat: {}\n-----".format(hidden.shape))
+        # # Concatenate both forward and backward states
+        # h_1, h_2 = hidden[0], hidden[1]
+        # hidden = torch.cat((h_1, h_2), dim=1)
+
         # x is of shape (S, N, I)
         # h (output) is of shape (S, N, 2 * H)
         print("-----\nIn get_all_hidden_states, x: {} -> h: {}\n-----".format(x.shape, hidden.shape))
@@ -118,16 +124,19 @@ class DecoderWithoutAttention(DecoderBase):
         # build decoder's first hidden state. Ensure it is derived from encoder
         # hidden state that has processed the entire sequence in each direction:
         hidden_state_mid = self.hidden_state_size // 2
+        # h_unpadded = h[F_lens]  # (N, 2*H)
+        # print("-----\nIn get_first_hidden_state, h_unpadded: {}".format(h_unpadded.shape))
 
         # - Populate indices 0 to self.hidden_state_size // 2 - 1 (inclusive)
         #   with the hidden states of the encoder's forward direction at the
         #   highest index in time *before padding*
-        forward = h[-1, 0:self.hidden_state_mid, :]
+        # Take each hidden state at F_len[n-1]
+        forward = h_unpadded[F_lens-1, :, :hidden_state_mid]
 
         # - Populate indices self.hidden_state_size // 2 to
         #   self.hidden_state_size - 1 (inclusive) with the hidden states of
         #   the encoder's backward direction at time t=0
-        backward = h[0, hidden_state_mid:self.hidden_state_size, :]
+        backward = h[0, :, hidden_state_mid:]
 
         # TODO: check concatination dimension
         htilde_tm1 = torch.cat((forward, backward), dim=1)
@@ -249,7 +258,7 @@ class DecoderWithAttention(DecoderWithoutAttention):
         else:
             assert False, "Cell type not within provided set of types"
 
-        self.ff = torch.nn.Linear(in_features=self.hidden_state_size,
+        self.ff = torch.nn.Linear(in_features=2 * self.hidden_state_size,
                                   out_features=self.target_vocab_size)
 
     def get_first_hidden_state(self, h, F_lens):
@@ -274,15 +283,15 @@ class DecoderWithAttention(DecoderWithoutAttention):
     def get_attention_weights(self, htilde_t, h, F_lens):
         # DO NOT MODIFY! Calculates attention weights, ensuring padded terms
         # in h have weight 0 and no gradient. You have to implement
-        # get_energy_scores()
+        # get_energytopk_logpy_t()
         # alpha_t (output) is of shape (S, N)
-        e_t = self.get_energy_scores(htilde_t, h)
+        e_t = self.get_energytopk_logpy_t(htilde_t, h)
         pad_mask = torch.arange(h.shape[0], device=h.device)
         pad_mask = pad_mask.unsqueeze(-1) >= F_lens  # (S, N)
         e_t = e_t.masked_fill(pad_mask, -float('inf'))
         return torch.nn.functional.softmax(e_t, 0)
 
-    def get_energy_scores(self, htilde_t, h):
+    def get_energytopk_logpy_t(self, htilde_t, h):
         # Determine energy scores via cosine similarity
         # htilde_t is of shape (N, 2 * H)
         # h is of shape (S, N, 2 * H)
@@ -347,7 +356,8 @@ class EncoderDecoder(EncoderDecoderBase):
 
         for t in range(T-1):
             # The following "forward" method is modified from the decoder's forward()
-            E_tm1 = E[t, :]  # ! This is the teacher enforcing part, where E_tm1 <- E
+            # ! This is the teacher enforcing part, where E_tm1 <- E
+            E_tm1 = E[t, :]
             xtilde_t = self.decoder.get_current_rnn_input(
                 E_tm1, htilde_tm1, h, F_lens)
             htilde_tm1 = self.decoder.get_current_hidden_state(
@@ -360,7 +370,7 @@ class EncoderDecoder(EncoderDecoderBase):
             # TODO: Think about if attention is used here
             # -- it shouldn't (should be included in get_current_hidden_state already)
 
-        logits = (torch.cat(logits_list, dim=1) # Dimension of concatenation is T
+        logits = (torch.cat(logits_list, dim=1)  # Dimension of concatenation is T
         return logits
         # ? https://github.com/JoshFeldman95/translation/blob/7fba309e6914ee4235e95fa2ffd3294f7db5d6a1/models.py
         # ? https://github.com/SunSiShining/CopyRNN-Pytorch/blob/2e37cce64d44e7c99a624e7f47c1b9c57094dadf/pykp/model.py
@@ -368,19 +378,72 @@ class EncoderDecoder(EncoderDecoderBase):
 
 
     def update_beam(self, htilde_t, b_tm1_1, logpb_tm1, logpy_t):
-        # perform the operations within the psuedo-code's loop in the
-        # assignment.
         # You do not need to worry about which paths have finished, but DO NOT
         # re-normalize logpy_t.
         # htilde_t is of shape (N, K, 2 * H) or a tuple of two of those (LSTM)
         # logpb_tm1 is of shape (N, K)
         # b_tm1_1 is of shape (t, N, K)
-        # b_t_0 (first output) is of shape (N, K, 2 * H) or a tuple of two of
-        #                                                         those (LSTM)
+        # logpy_t is of shape (N, K, V)
+
+        # b_t_0 (first output) is of shape (N, K, 2 * H) or a tuple of two of those (LSTM)
         # b_t_1 (second output) is of shape (t + 1, N, K)
         # logpb_t (third output) is of shape (N, K)
+
         # relevant pytorch modules:
-        # torch.{flatten,topk,unsqueeze,expand_as,gather,cat}
+        # torch.{flatten,unsqueeze,expand_as,gather,cat}
+
         # hint: if you flatten a two-dimensional array of shape z of (A, B),
         # then the element z[a, b] maps to z'[a*B + b]
-        assert False, "Fill me"
+
+        # Define some dimensions
+        N, K, t = logpb_tm1.shape[0], logpb_tm1.shape[1], b_tm1_1.shape[0]
+        KK = K * K  # K beams, each extended by K words -> K^2 (beam+word) pairs
+        NK, NKK=N * K, N * KK  # Each batch has K^2 extended (beam+word) pairs
+
+        # Select K words for each beam as candidates
+        # _topk_logpy_t: (N, K, V) -> (N, K, K)
+        topk_logpy_t, topk_logpy_id = logpy_t.topk(K, dim=-1)
+
+        # Expand (add) the candidates, topk_logpy_t with the beam score at t-1
+        topk_logpy_t = topk_logpy_t + logpb_tm1.unsqueeze(2).expand(N, K, K)
+
+        # Select K beams from the K^2 candidates Reshape 
+        # topk_logpy_t: (N, K, K) -> (N, K*K) -> topk_logpb_t: (N, K)
+        topk_logpb_t, topk_logpb_t_id = topk_logpy_t.view(N, KK).topk(K, dim=-1)
+
+        # Select corresponding K y's from topk_logpy_id
+        # topk_logpy_id: (N, K, K) -> y_id: (N, K) -> (NK, 1)
+        topk_y_id=(topk_logpb_t_id + torch.arange(0, NKK, KK, dtype=topk_logpb_t_id.dtype,
+                                    device=topk_logpb_t_id.device).unsqueeze(1).expand_as(topk_logpb_t_id)).view(NK)
+        topk_y_id=topk_logpy_id.view(NKK).index_select(0, y_id).view(NK, 1)
+        
+        # Select corresponding K beam ids and their "past"
+        # b_tm1_1: (t, N, K) -> b_t_1 ->(t+1, N, K)
+        topk_logpb_t_id=(topk_logpb_t_id / K + torch.arange(0, NK, K, dtype=topk_logpb_t_id.dtype,
+                                    device=topk_logpb_t_id.device).unsqueeze(1).expand_as(topk_logpb_t_id)).view(NK)
+        #? https://github.com/ketranm/sa-nmt/blob/5914227f0a42a1742c5448bfd6fe6bd0382d23dd/infer.py
+        
+        #? https://github.com/ssunqf/nlp-exp/blob/3e86cb52bf41fe248c07af6defa2e84d92003d03/task/nmt/train/model.py
+        scores = logpy_t + self.scores.unsqueeze(1).expand_as(logpy_t)
+
+        for i in range(self.next_input[-1].size(0)):
+            if self.next_input[-1].data[i] == self.eos_index:
+                scores[i] = -1e20
+
+        topk_score, topk_index = scores.view(-1).topk(self.beam_size)
+
+        vocab_size = logpy_t.size(1)
+        topk_prev = topk_index / vocab_size
+        topk_input = topk_index % vocab_size
+
+        self.next_input.append(topk_input)
+        self.prev_index.append(topk_prev)
+        self.scores = topk_score
+
+        self.decoder_state.update(output, hidden_state, topk_prev)
+
+        self.attn_scores.append(attn_scores.index_select(0, topk_prev))
+
+        for i in range(self.next_input[-1].size(0)):
+            if self.next_input[-1].data[i] == self.eos_index:
+                self.finished.append((len(self.next_input), i, self.scores[i]))
