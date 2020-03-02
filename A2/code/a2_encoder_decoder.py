@@ -377,73 +377,52 @@ class EncoderDecoder(EncoderDecoderBase):
         # ? https://github.com/sh951011/PyTorch-Seq2seq/blob/66c4c2bae6b8f432f87bf532c3004de2cee56f99/models/decoder.py
 
 
-    def update_beam(self, htilde_t, b_tm1_1, logpb_tm1, logpy_t):
-        # You do not need to worry about which paths have finished, but DO NOT
-        # re-normalize logpy_t.
-        # htilde_t is of shape (N, K, 2 * H) or a tuple of two of those (LSTM)
-        # logpb_tm1 is of shape (N, K)
-        # b_tm1_1 is of shape (t, N, K)
-        # logpy_t is of shape (N, K, V)
+def update_beam(self, htilde_t, b_tm1_1, logpb_tm1, logpy_t):
+    """
+    For n, k, v (tm1 -> cand):
+        b_cand_0 of kth path appending vocab v = htilde_t of kth path at t+1
+        b_cand_1 of kth path appending vocab v = concatenate [b_tm1_1, v]
+        logpb_cand = logpb_tm1_1 + logpy_t with vocab v
+    For n, k (cand -> t):
+        b_t = max of logpb_cand, for both b_t_1 and b_t_0
+    """
 
-        # b_t_0 (first output) is of shape (N, K, 2 * H) or a tuple of two of those (LSTM)
-        # b_t_1 (second output) is of shape (t + 1, N, K)
-        # logpb_t (third output) is of shape (N, K)
+    # Define some dimensions
+    N, K, t = logpb_tm1.shape[0], logpb_tm1.shape[1], b_tm1_1.shape[0]
+    KK = K * K  # K beams, each extended by K words -> K^2 (beam+word) pairs
+    NK, NKK = N * K, N * KK  # Each batch has K^2 extended (beam+word) pairs
 
-        # relevant pytorch modules:
-        # torch.{flatten,unsqueeze,expand_as,gather,cat}
+    # Select K words for each beam as candidates
+    v_prob, v_id = logpy_t.topk(K, dim=-1) # (N, K, K)
 
-        # hint: if you flatten a two-dimensional array of shape z of (A, B),
-        # then the element z[a, b] maps to z'[a*B + b]
+    # Expand the candidates, find logpy_t of each
+    logpb_cand = logpb_tm1.unsqueeze(2).expand(N, K, K) + v_prob  # (N, K, K)
+    logpb_cand = logpb_cand.view(N, KK)  # (N, K*K)
 
-        # Define some dimensions
-        N, K, t = logpb_tm1.shape[0], logpb_tm1.shape[1], b_tm1_1.shape[0]
-        KK = K * K  # K beams, each extended by K words -> K^2 (beam+word) pairs
-        NK, NKK=N * K, N * KK  # Each batch has K^2 extended (beam+word) pairs
+    # Select K from the K^2 candidates
+    logpb_t, cand_id=logpb_cand.topk(K, dim=-1)  # (N, K)
 
-        # Select K words for each beam as candidates
-        # _topk_logpy_t: (N, K, V) -> (N, K, K)
-        topk_logpy_t, topk_logpy_id = logpy_t.topk(K, dim=-1)
+    # Select corresponding K words used to update the beams
+    NK_steper = torch.arange(0, NKK, KK, dtype=cand_id.dtype,
+                        device=cand_id.device).unsqueeze(1).expand_as(cand_id)
+    cand_v_id = (cand_id + NK_steper).view(NK) # (NK, )
+    v_id = v_id.view(NKK).index_select(0, cand_v_id).view(NK, 1)  # (NKK, ) -> (NK, )
 
-        # Expand (add) the candidates, topk_logpy_t with the beam score at t-1
-        topk_logpy_t = topk_logpy_t + logpb_tm1.unsqueeze(2).expand(N, K, K)
+    # Select corresponding K beams and update b_t
+    b_t_id = (cand_id / K + N_steper).view(NK) # (NK, )
+    b_t_0 = htilde_t.view(NK, -1).index_select(0, b_t_id).view(N, K, -1)  # (N, K, 2H) -> (NK, 2H) -> (N, K, 2H)
+    b_tm1_selected = b_tm1_1.view(t, NK).index_select(1, b_t_id) # (t, N, K) -> (t, NK)
+    b_t_1 = torch.cat((b_tm1_selected, v_id), -1).view(t+1, N, K) # (t+1, NK) -> (t+1, N, K)
 
-        # Select K beams from the K^2 candidates Reshape 
-        # topk_logpy_t: (N, K, K) -> (N, K*K) -> topk_logpb_t: (N, K)
-        topk_logpb_t, topk_logpb_t_id = topk_logpy_t.view(N, KK).topk(K, dim=-1)
+    return b_t_0, b_t_1, logpb_t
+    # htilde_t is of shape (N, K, 2 * H) or a tuple of two of those (LSTM)
+    # logpb_tm1 is of shape (N, K)
+    # b_tm1_1 is of shape (t, N, K)
+    # logpy_t is of shape (N, K, V)
 
-        # Select corresponding K y's from topk_logpy_id
-        # topk_logpy_id: (N, K, K) -> y_id: (N, K) -> (NK, 1)
-        topk_y_id=(topk_logpb_t_id + torch.arange(0, NKK, KK, dtype=topk_logpb_t_id.dtype,
-                                    device=topk_logpb_t_id.device).unsqueeze(1).expand_as(topk_logpb_t_id)).view(NK)
-        topk_y_id=topk_logpy_id.view(NKK).index_select(0, y_id).view(NK, 1)
-        
-        # Select corresponding K beam ids and their "past"
-        # b_tm1_1: (t, N, K) -> b_t_1 ->(t+1, N, K)
-        topk_logpb_t_id=(topk_logpb_t_id / K + torch.arange(0, NK, K, dtype=topk_logpb_t_id.dtype,
-                                    device=topk_logpb_t_id.device).unsqueeze(1).expand_as(topk_logpb_t_id)).view(NK)
-        #? https://github.com/ketranm/sa-nmt/blob/5914227f0a42a1742c5448bfd6fe6bd0382d23dd/infer.py
-        
-        #? https://github.com/ssunqf/nlp-exp/blob/3e86cb52bf41fe248c07af6defa2e84d92003d03/task/nmt/train/model.py
-        scores = logpy_t + self.scores.unsqueeze(1).expand_as(logpy_t)
+    # b_t_0 (first output) is of shape (N, K, 2 * H) or a tuple of two of those (LSTM)
+    # b_t_1 (second output) is of shape (t + 1, N, K)
+    # logpb_t (third output) is of shape (N, K)
 
-        for i in range(self.next_input[-1].size(0)):
-            if self.next_input[-1].data[i] == self.eos_index:
-                scores[i] = -1e20
-
-        topk_score, topk_index = scores.view(-1).topk(self.beam_size)
-
-        vocab_size = logpy_t.size(1)
-        topk_prev = topk_index / vocab_size
-        topk_input = topk_index % vocab_size
-
-        self.next_input.append(topk_input)
-        self.prev_index.append(topk_prev)
-        self.scores = topk_score
-
-        self.decoder_state.update(output, hidden_state, topk_prev)
-
-        self.attn_scores.append(attn_scores.index_select(0, topk_prev))
-
-        for i in range(self.next_input[-1].size(0)):
-            if self.next_input[-1].data[i] == self.eos_index:
-                self.finished.append((len(self.next_input), i, self.scores[i]))
+    # relevant pytorch modules:
+    # torch.{flatten,unsqueeze,expand_as,gather,cat}
