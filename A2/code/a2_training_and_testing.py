@@ -90,12 +90,12 @@ def compute_batch_total_bleu(E_ref, E_cand, target_sos, target_eos):
         The sum total BLEU score for across all elements in the batch. Use
         n-gram precision 4.
     '''
-    refs, cands = E_ref.tolist(), E_cand.tolist()
-    batchsize = E_ref.shape[1]
+    # refs, cands = E_ref.tolist(), E_cand.tolist()
+    batch_size = E_ref.shape[1]
     score, ngram = 0, 4
 
-    for n in range(batchsize):
-        ref, cand = E_ref[n], E_cand[n]
+    for n in range(batch_size):
+        ref, cand = E_ref[:, n], E_cand[:, n]
         #? https://github.com/ryosuke071111/NLP_DLbasic/blob/2644451492e23648b8cded90c7edfb31438623ff/chap3/演習/materials/.ipynb_checkpoints/lecture_chap3_exercise_answer-checkpoint.ipynb
         #TODO: check if the following should include the outer [] or not
         ref = [ref[ref.index(target_sos):ref.index(target_eos)]]
@@ -141,4 +141,26 @@ def compute_average_bleu_over_dataset(
         The total BLEU score summed over all sequences divided by the number of
         sequences
     '''
-    assert False, "Fill me"
+    total_score, total_batches = 0, 0
+
+    # For every iteration of the `dataloader` (which yields triples``F, F_lens, E_ref``):
+    for F, F_lens, E_ref in dataloader:
+        # 1. Sends ``F`` to the appropriate device via ``F = F.to(device)``. Same
+        # for ``F_lens``. No need for ``E_cand``, since it will always be
+        # compared on the CPU.
+        batch_size = F.shape[1]
+        F, F_lens = F.to(device), F_lens.to(device)
+
+        # 2. Performs a beam search by calling ``b_1 = model(F, F_lens)``
+        b_1 = model(F, F_lens)  # shape (T', N, self.beam_width)
+
+        # 3. Extracts the top path per beam as ``E_cand = b_1[..., 0]`` of shape (T', N)
+        E_cand = b_1[..., 0]
+
+        # 4. Computes the total BLEU score of the batch using func: `compute_batch_total_bleu`
+        total_score += compute_batch_total_bleu(
+            E_ref, E_cand, target_sos, target_eos)
+        total_batches += 1
+
+    # Returns the average per-sequence BLEU score
+    return total_score / (total_batches * batch_size)

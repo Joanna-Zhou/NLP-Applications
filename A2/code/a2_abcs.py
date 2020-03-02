@@ -795,10 +795,12 @@ class EncoderDecoderBase(torch.nn.Module, metaclass=abc.ABCMeta):
                     break
             finished = (b_tm1_1[-1] == self.target_eos)
             E_tm1 = b_tm1_1[-1].flatten()  # (N * K,)
+            #! Might be a useful logic elsewhere
             logits_t, htilde_t = self.decoder(E_tm1, htilde_tm1, h, F_lens)
             logits_t = logits_t.view(
                 -1, self.beam_width, self.target_vocab_size)  # (N, K, V)
-            logpy_t = torch.nn.functional.log_softmax(logits_t, -1)
+            logpy_t = torch.nn.functional.log_softmax(
+                logits_t, -1)  # (N, K, V)
             # We length-normalize the extensions of the unfinished paths
             if t:
                 logpb_tm1 = torch.where(
@@ -822,7 +824,7 @@ class EncoderDecoderBase(torch.nn.Module, metaclass=abc.ABCMeta):
                 htilde_t = htilde_t.view(
                     -1, self.beam_width, 2 * self.encoder_hidden_size)
             b_t_0, b_t_1, logpb_t = self.update_beam(
-                htilde_t, b_tm1_1, logpb_tm1, logpy_t)
+                htilde_t, b_tm1_1, logpb_tm1, logpy_t) #! This is where update_beam is used
             del logits_t, logpy_t, finished, htilde_t
             if self.cell_type == 'lstm':
                 htilde_tm1 = (
