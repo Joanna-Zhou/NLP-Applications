@@ -54,18 +54,58 @@ def train_for_epoch(model, dataloader, optimizer, device):
     avg_loss : float
         The total loss divided by the total numer of sequence
     '''
-    # If you want, instead of looping through your dataloader as
-    # for ... in dataloader: ...
-    # you can wrap dataloader with "tqdm":
-    # for ... in tqdm(dataloader): ...
-    # This will update a progress bar on every iteration that it prints
-    # to stdout. It's a good gauge for how long the rest of the epoch
-    # will take. This is entirely optional - we won't grade you differently
-    # either way.
     # If you are running into CUDA memory errors part way through training,
     # try "del F, F_lens, E, logits, loss" at the end of each iteration of
     # the loop.
-    assert False, "Fill me"
+
+    # 1. Defines a loss function using :class:`torch.nn.CrossEntropyLoss`,
+    #    keeping track of what id the loss considers "padding"
+    loss_fn = torch.nn.CrossEntropyLoss(ignore_index=model.pad_id)
+    total_loss = 0
+
+    # 2. For every iteration of the `dataloader` (which yields triples
+    #    ``F, F_lens, E``)
+    for F, F_lens, E in dataloader:
+        # 1. Sends ``F`` to the appropriate device via ``F = F.to(device)``. Same
+        #       for ``F_lens`` and ``E``.
+        F = F.to(device)
+        F_lens = F_lens.to(device)
+        E = E.to(device)
+
+        # 2. Zeros out the model's previous gradient with ``optimizer.zero_grad()``
+        optimizer.zero_grad()
+
+        # 3. Calls ``logits = model(F, F_lens, E)`` to determine next-token
+        #     probabilities.
+        logits = model(F, F_lens, E)
+
+        # 4. Modifies ``E`` for the loss function, getting rid of a token and
+        #     replacing excess end-of-sequence tokens with padding using
+        # ``model.get_target_padding_mask()`` and ``torch.masked_fill``
+        pad_mask = model.get_target_padding_mask(E)
+        E = E.masked_fill(pad_mask, -float('inf'))
+
+        # 5. Flattens out the sequence dimension into the batch dimension of both
+        #     ``logits`` and ``E``
+        logits_flat = logits.view(-1, logits.size(-1)) # (T - 1, N, V) -> ((T-1)*N, V)
+        E = E[:, 1:].view(-1, 1)  # target,  (N, T) -> (N, T-1) ->((T-1)*N, 1)
+
+        # 6. Calls ``loss = loss_fn(logits, E)`` to calculate the batch loss
+        loss = loss_fn(logits, E)
+        total_loss += loss
+
+        # 7. Calls ``loss.backward()`` to backpropagate gradients through
+        #     ``model``
+        loss.backward()
+
+        # 8. Calls ``optim.step()`` to update model parameters
+        optimizer.step()
+
+        # To prevent CUDA memory errors part way through training
+        del F, F_lens, E, logits, loss
+
+    # 3. Returns the average loss over sequences
+    return total_loss / len(dataloader.data)
 
 
 def compute_batch_total_bleu(E_ref, E_cand, target_sos, target_eos):
