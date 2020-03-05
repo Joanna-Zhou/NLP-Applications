@@ -48,8 +48,6 @@ class Encoder(EncoderBase):
                                     self.num_hidden_layers,
                                     dropout=self.dropout,
                                     bidirectional=True)
-        else:
-            assert False, "Cell type not within provided set of types"
 
     def get_all_rnn_inputs(self, F):
         # compute input vectors for each source transcription.
@@ -69,7 +67,8 @@ class Encoder(EncoderBase):
         # Unpack hidden states
         outputs, _ = torch.nn.utils.rnn.pad_packed_sequence(outputs)
 
-        # # TODO: check if we need this
+        # TODO: check if we need to manually concatenate
+        # TODO: if we do, use https://bastings.github.io/annotated_encoder_decoder/
         # print("-----\nIn get_all_hidden_states, hidden before concat: {}\n-----".format(hidden.shape))
         # # Concatenate both forward and backward states
         # h_1, h_2 = hidden[0], hidden[1]
@@ -109,8 +108,6 @@ class DecoderWithoutAttention(DecoderBase):
         elif self.cell_type == 'rnn':
             self.cell = torch.nn.RNNCell(self.word_embedding_size + 2 * self.hidden_state_size,
                                          2 * self.hidden_state_size)
-        else:
-            assert False, "Cell type not within provided set of types"
 
         # ff : torch.nn.Linear
         #     A fully-connected layer that converts the decoder hidden state
@@ -139,6 +136,7 @@ class DecoderWithoutAttention(DecoderBase):
         backward = h[0, :, hidden_state_mid:]
 
         # TODO: check concatination dimension
+        # TODO: check what i need to do with LSTM
         htilde_tm1 = torch.cat((forward, backward), dim=1)
         # h is of shape(S, N, 2 * H)
         # F_lens is of shape (N,)
@@ -220,7 +218,6 @@ class DecoderWithoutAttention(DecoderBase):
         # logits_t (output) is of shape (N, V)
         print("-----\nIn get_current_logits, htilde_tm1: {} -> logits: {}\n-----".format(
             htilde_t.shape, logits.shape))
-
         return logits
 
 
@@ -232,44 +229,43 @@ class DecoderWithAttention(DecoderWithoutAttention):
 
     def init_submodules(self):
         # same as before, but with a slight modification for attention
-        # using: self.target_vocab_size, self.word_embedding_size, self.pad_id,
-        # self.hidden_state_size, self.cell_type
         # cell_type will be one of: ['lstm', 'gru', 'rnn']
-        assert False, "Fill me"
-        # embedding : torch.nn.Embedding
-        #     A layer that extracts learned token embeddings for each index in
-        #     a token sequence. It must not learn an embedding for padded tokens.
+        # * Embedding
         self.embedding = torch.nn.Embedding(self.target_vocab_size,
                                             self.word_embedding_size,
                                             padding_idx=self.pad_id)
 
-        if self.cell_type == 'lstm':
-            self.cell = torch.nn.LSTMCell(self.word_embedding_size + 2 * self.hidden_state_size,
-                                          2 * self.hidden_state_size,
-                                          dropout=self.dropout)
-        elif self.cell_type == 'gru':
-            self.cell = torch.nn.GRUCell(self.word_embedding_size + 2 * self.hidden_state_size,
-                                         2 * self.hidden_state_size,
-                                         dropout=self.dropout)
-        elif self.cell_type == 'rnn':
-            self.cell = torch.nn.RNNCell(self.word_embedding_size + 2 * self.hidden_state_size,
-                                         2 * self.hidden_state_size,
-                                         dropout=self.dropout)
-        else:
-            assert False, "Cell type not within provided set of types"
+        # * RNN
+        input_size = self.word_embedding_size + 2 * self.hidden_state_size
+        hidden_size = enc_output_size = 2 * self.hidden_state_size
 
-        self.ff = torch.nn.Linear(in_features=2 * self.hidden_state_size,
-                                  out_features=self.target_vocab_size)
+        if self.cell_type == 'lstm':
+            self.cell = torch.nn.LSTMCell(input_size, hidden_size)
+        elif self.cell_type == 'gru':
+            self.cell = torch.nn.GRUCell(input_size, hidden_size)
+        elif self.cell_type == 'rnn':
+            self.cell = torch.nn.RNNCell(input_size, hidden_size)
+
+        # * Attention
+        self.attn = torch.nn.Linear(enc_output_size, hidden_size)
+        self.energy = nn.Linear(hidden_size, 1)
+
+        # * Logit
+        self.ff = torch.nn.Linear(in_features=hidden_size, out_features=self.target_vocab_size)
 
     def get_first_hidden_state(self, h, F_lens):
         # same as before, but initialize to zeros
         # relevant pytorch modules: torch.zeros_like
         # ensure result is on same device as h!
-        assert False, "Fill me"
+        # h : (S, N, self.hidden_state_size) -> htilde_0 : (N, self.hidden_state_size)
+        # since all is initialized to zero, which h to take doesn't matter
+        return torch.zeros_like(h[-1], device=h.device)
 
     def get_current_rnn_input(self, E_tm1, htilde_tm1, h, F_lens):
         # update to account for attention. Use attend() for c_t
-        assert False, "Fill me"
+        c_t = self.attend(htilde_t, h, F_lens)
+        xtilde_t = torch.stack((embedded, c_t))
+        return xtilde_t
 
     def attend(self, htilde_t, h, F_lens):
         # compute context vector c_t. Use get_attention_weights() to calculate
@@ -278,7 +274,9 @@ class DecoderWithAttention(DecoderWithoutAttention):
         # h is of shape (S, N, 2 * H)
         # F_lens is of shape (N,)
         # c_t (output) is of shape (N, 2 * H)
-        assert False, "Fill me"
+        alphas = self.get_attention_weights(htilde_t, h, F_lens)
+        c_t = torch.bmm(alphas, h)
+        return c_t
 
     def get_attention_weights(self, htilde_t, h, F_lens):
         # DO NOT MODIFY! Calculates attention weights, ensuring padded terms
@@ -296,7 +294,11 @@ class DecoderWithAttention(DecoderWithoutAttention):
         # htilde_t is of shape (N, 2 * H)
         # h is of shape (S, N, 2 * H)
         # e_t (output) is of shape (S, N)
-        assert False, "Fill me"
+        S, N = h.shape[0], h.shape[1]
+        energy = torch.zeros(S, N)
+        for s in range(S):
+            energy[s] = torch.nn.functional.cosine_similarity(htilde_t, h[s], dim=1)
+        return energy
 
 
 class EncoderDecoder(EncoderDecoderBase):
@@ -370,59 +372,59 @@ class EncoderDecoder(EncoderDecoderBase):
             # TODO: Think about if attention is used here
             # -- it shouldn't (should be included in get_current_hidden_state already)
 
-        logits = (torch.cat(logits_list, dim=1)  # Dimension of concatenation is T
-        return logits
+        logits = torch.cat(logits_list, dim=1)  # Dimension of concatenation is T
         # ? https://github.com/JoshFeldman95/translation/blob/7fba309e6914ee4235e95fa2ffd3294f7db5d6a1/models.py
         # ? https://github.com/SunSiShining/CopyRNN-Pytorch/blob/2e37cce64d44e7c99a624e7f47c1b9c57094dadf/pykp/model.py
         # ? https://github.com/sh951011/PyTorch-Seq2seq/blob/66c4c2bae6b8f432f87bf532c3004de2cee56f99/models/decoder.py
+        return logits
 
 
-def update_beam(self, htilde_t, b_tm1_1, logpb_tm1, logpy_t):
-    """
-    For n, k, v (tm1 -> cand):
-        b_cand_0 of kth path appending vocab v = htilde_t of kth path at t+1
-        b_cand_1 of kth path appending vocab v = concatenate [b_tm1_1, v]
-        logpb_cand = logpb_tm1_1 + logpy_t with vocab v
-    For n, k (cand -> t):
-        b_t = max of logpb_cand, for both b_t_1 and b_t_0
-    """
+    def update_beam(self, htilde_t, b_tm1_1, logpb_tm1, logpy_t):
+        """
+        For n, k, v (tm1 -> cand):
+            b_cand_0 of kth path appending vocab v = htilde_t of kth path at t+1
+            b_cand_1 of kth path appending vocab v = concatenate [b_tm1_1, v]
+            logpb_cand = logpb_tm1_1 + logpy_t with vocab v
+        For n, k (cand -> t):
+            b_t = max of logpb_cand, for both b_t_1 and b_t_0
+        """
 
-    # Define some dimensions
-    N, K, t = logpb_tm1.shape[0], logpb_tm1.shape[1], b_tm1_1.shape[0]
-    KK = K * K  # K beams, each extended by K words -> K^2 (beam+word) pairs
-    NK, NKK = N * K, N * KK  # Each batch has K^2 extended (beam+word) pairs
+        # Define some dimensions
+        N, K, t = logpb_tm1.shape[0], logpb_tm1.shape[1], b_tm1_1.shape[0]
+        KK = K * K  # K beams, each extended by K words -> K^2 (beam+word) pairs
+        NK, NKK = N * K, N * KK  # Each batch has K^2 extended (beam+word) pairs
 
-    # Select K words for each beam as candidates
-    v_prob, v_id = logpy_t.topk(K, dim=-1) # (N, K, K)
+        # Select K words for each beam as candidates
+        v_prob, v_id = logpy_t.topk(K, dim=-1) # (N, K, K)
 
-    # Expand the candidates, find logpy_t of each
-    logpb_cand = logpb_tm1.unsqueeze(2).expand(N, K, K) + v_prob  # (N, K, K)
-    logpb_cand = logpb_cand.view(N, KK)  # (N, K*K)
+        # Expand the candidates, find logpy_t of each
+        logpb_cand = logpb_tm1.unsqueeze(2).expand(N, K, K) + v_prob  # (N, K, K)
+        logpb_cand = logpb_cand.view(N, KK)  # (N, K*K)
 
-    # Select K from the K^2 candidates
-    logpb_t, cand_id=logpb_cand.topk(K, dim=-1)  # (N, K)
+        # Select K from the K^2 candidates
+        logpb_t, cand_id=logpb_cand.topk(K, dim=-1)  # (N, K)
 
-    # Select corresponding K words used to update the beams
-    NK_steper = torch.arange(0, NKK, KK, dtype=cand_id.dtype,
-                        device=cand_id.device).unsqueeze(1).expand_as(cand_id)
-    cand_v_id = (cand_id + NK_steper).view(NK) # (NK, )
-    v_id = v_id.view(NKK).index_select(0, cand_v_id).view(NK, 1)  # (NKK, ) -> (NK, )
+        # Select corresponding K words used to update the beams
+        NK_steper = torch.arange(0, NKK, KK, dtype=cand_id.dtype,
+                            device=cand_id.device).unsqueeze(1).expand_as(cand_id)
+        cand_v_id = (cand_id + NK_steper).view(NK) # (NK, )
+        v_id = v_id.view(NKK).index_select(0, cand_v_id).view(NK, 1)  # (NKK, ) -> (NK, )
 
-    # Select corresponding K beams and update b_t
-    b_t_id = (cand_id / K + N_steper).view(NK) # (NK, )
-    b_t_0 = htilde_t.view(NK, -1).index_select(0, b_t_id).view(N, K, -1)  # (N, K, 2H) -> (NK, 2H) -> (N, K, 2H)
-    b_tm1_selected = b_tm1_1.view(t, NK).index_select(1, b_t_id) # (t, N, K) -> (t, NK)
-    b_t_1 = torch.cat((b_tm1_selected, v_id), -1).view(t+1, N, K) # (t+1, NK) -> (t+1, N, K)
+        # Select corresponding K beams and update b_t
+        b_t_id = (cand_id / K + N_steper).view(NK) # (NK, )
+        b_t_0 = htilde_t.view(NK, -1).index_select(0, b_t_id).view(N, K, -1)  # (N, K, 2H) -> (NK, 2H) -> (N, K, 2H)
+        b_tm1_selected = b_tm1_1.view(t, NK).index_select(1, b_t_id) # (t, N, K) -> (t, NK)
+        b_t_1 = torch.cat((b_tm1_selected, v_id), -1).view(t+1, N, K) # (t+1, NK) -> (t+1, N, K)
 
-    return b_t_0, b_t_1, logpb_t
-    # htilde_t is of shape (N, K, 2 * H) or a tuple of two of those (LSTM)
-    # logpb_tm1 is of shape (N, K)
-    # b_tm1_1 is of shape (t, N, K)
-    # logpy_t is of shape (N, K, V)
+        return b_t_0, b_t_1, logpb_t
+        # htilde_t is of shape (N, K, 2 * H) or a tuple of two of those (LSTM)
+        # logpb_tm1 is of shape (N, K)
+        # b_tm1_1 is of shape (t, N, K)
+        # logpy_t is of shape (N, K, V)
 
-    # b_t_0 (first output) is of shape (N, K, 2 * H) or a tuple of two of those (LSTM)
-    # b_t_1 (second output) is of shape (t + 1, N, K)
-    # logpb_t (third output) is of shape (N, K)
+        # b_t_0 (first output) is of shape (N, K, 2 * H) or a tuple of two of those (LSTM)
+        # b_t_1 (second output) is of shape (t + 1, N, K)
+        # logpb_t (third output) is of shape (N, K)
 
-    # relevant pytorch modules:
-    # torch.{flatten,unsqueeze,expand_as,gather,cat}
+        # relevant pytorch modules:
+        # torch.{flatten,unsqueeze,expand_as,gather,cat}
