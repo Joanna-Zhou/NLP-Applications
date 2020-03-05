@@ -237,7 +237,7 @@ class DecoderWithAttention(DecoderWithoutAttention):
 
         # * RNN
         input_size = self.word_embedding_size + 2 * self.hidden_state_size
-        hidden_size = enc_output_size = 2 * self.hidden_state_size
+        hidden_size = 2 * self.hidden_state_size
 
         if self.cell_type == 'lstm':
             self.cell = torch.nn.LSTMCell(input_size, hidden_size)
@@ -247,8 +247,7 @@ class DecoderWithAttention(DecoderWithoutAttention):
             self.cell = torch.nn.RNNCell(input_size, hidden_size)
 
         # * Attention
-        self.attn = torch.nn.Linear(enc_output_size, hidden_size)
-        self.energy = nn.Linear(hidden_size, 1)
+        # self.attn_combiine = torch.nn.Linear(hidden_size * 2, hidden_size)
 
         # * Logit
         self.ff = torch.nn.Linear(in_features=hidden_size, out_features=self.target_vocab_size)
@@ -263,8 +262,9 @@ class DecoderWithAttention(DecoderWithoutAttention):
 
     def get_current_rnn_input(self, E_tm1, htilde_tm1, h, F_lens):
         # update to account for attention. Use attend() for c_t
-        c_t = self.attend(htilde_t, h, F_lens)
-        xtilde_t = torch.stack((embedded, c_t))
+        embedded = self.embedding(E_tm1)  # (N, self.word_embedding_size)
+        c_t = self.attend(htilde_t, h, F_lens)  # (N, 2 * H)
+        xtilde_t = torch.stack((embedded, c_t))  # (N, 2 * H + self.word_embedding_size)
         return xtilde_t
 
     def attend(self, htilde_t, h, F_lens):
@@ -411,20 +411,13 @@ class EncoderDecoder(EncoderDecoderBase):
         v_id = v_id.view(NKK).index_select(0, cand_v_id).view(NK, 1)  # (NKK, ) -> (NK, )
 
         # Select corresponding K beams and update b_t
+        N_steper = torch.arange(0, NK, K, dtype=cand_id.dtype,
+                                 device=cand_id.device).unsqueeze(1).expand_as(cand_id)
         b_t_id = (cand_id / K + N_steper).view(NK) # (NK, )
         b_t_0 = htilde_t.view(NK, -1).index_select(0, b_t_id).view(N, K, -1)  # (N, K, 2H) -> (NK, 2H) -> (N, K, 2H)
-        b_tm1_selected = b_tm1_1.view(t, NK).index_select(1, b_t_id) # (t, N, K) -> (t, NK)
-        b_t_1 = torch.cat((b_tm1_selected, v_id), -1).view(t+1, N, K) # (t+1, NK) -> (t+1, N, K)
+        b_tm1_selected = b_tm1_1.reshape(t, NK).index_select(1, b_t_id)  # (t, N, K) -> (t, NK)
+        # print("Dimensions -- b_tm1_selected: {}, v_id: {}, N: {}, K:{}".format(
+        #     b_tm1_selected.shape, v_id.reshape(t, NK).shape, N, K))
+        b_t_1 = torch.cat((b_tm1_selected, v_id.reshape(t, NK)), -1).view(t+1, N, K) # (t+1, NK) -> (t+1, N, K)
 
         return b_t_0, b_t_1, logpb_t
-        # htilde_t is of shape (N, K, 2 * H) or a tuple of two of those (LSTM)
-        # logpb_tm1 is of shape (N, K)
-        # b_tm1_1 is of shape (t, N, K)
-        # logpy_t is of shape (N, K, V)
-
-        # b_t_0 (first output) is of shape (N, K, 2 * H) or a tuple of two of those (LSTM)
-        # b_t_1 (second output) is of shape (t + 1, N, K)
-        # logpb_t (third output) is of shape (N, K)
-
-        # relevant pytorch modules:
-        # torch.{flatten,unsqueeze,expand_as,gather,cat}
