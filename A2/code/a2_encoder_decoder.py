@@ -14,22 +14,12 @@ class Encoder(EncoderBase):
 
     def init_submodules(self):
         '''Initialize the parameterized submodules of this network'''
-        # initialize parameterized submodules here: rnn, embedding
-        # using:
-        # cell_type will be one of: ['lstm', 'gru', 'rnn']
-        # relevant pytorch modules:
-        #   torch.nn.{LSTM, GRU, RNN, Embedding}
-
-        # embedding : torch.nn.Embedding
-        #     A layer that extracts learned token embeddings for each index in a token sequence.
-        #     It must not learn an embedding for padded tokens.
+        # * embedding : extracts learned token embeddings for each index in a token sequence, watch out for padding
         self.embedding = torch.nn.Embedding(self.source_vocab_size,
                                             self.word_embedding_size,
                                             padding_idx=self.pad_id)
 
-        # rnn : {torch.nn.RNN, torch.nn.GRU, torch.nn.LSTM}
-        #     A layer corresponding to the recurrent neural network that
-        #     processes source word embeddings. It must be bidirectional.
+        # * rnn : rnn layer that processes source word embeddings, bidirectional
         if self.cell_type == 'lstm':
             self.rnn = torch.nn.LSTM(self.word_embedding_size,
                                      self.hidden_state_size,
@@ -250,7 +240,8 @@ class DecoderWithAttention(DecoderWithoutAttention):
         # self.attn_combiine = torch.nn.Linear(hidden_size * 2, hidden_size)
 
         # * Logit
-        self.ff = torch.nn.Linear(in_features=hidden_size, out_features=self.target_vocab_size)
+        self.ff = torch.nn.Linear(
+            in_features=hidden_size, out_features=self.target_vocab_size)
 
     def get_first_hidden_state(self, h, F_lens):
         # same as before, but initialize to zeros
@@ -264,7 +255,8 @@ class DecoderWithAttention(DecoderWithoutAttention):
         # update to account for attention. Use attend() for c_t
         embedded = self.embedding(E_tm1)  # (N, self.word_embedding_size)
         c_t = self.attend(htilde_t, h, F_lens)  # (N, 2 * H)
-        xtilde_t = torch.stack((embedded, c_t))  # (N, 2 * H + self.word_embedding_size)
+        # (N, 2 * H + self.word_embedding_size)
+        xtilde_t = torch.stack((embedded, c_t))
         return xtilde_t
 
     def attend(self, htilde_t, h, F_lens):
@@ -297,7 +289,8 @@ class DecoderWithAttention(DecoderWithoutAttention):
         S, N = h.shape[0], h.shape[1]
         energy = torch.zeros(S, N)
         for s in range(S):
-            energy[s] = torch.nn.functional.cosine_similarity(htilde_t, h[s], dim=1)
+            energy[s] = torch.nn.functional.cosine_similarity(
+                htilde_t, h[s], dim=1)
         return energy
 
 
@@ -372,12 +365,12 @@ class EncoderDecoder(EncoderDecoderBase):
             # TODO: Think about if attention is used here
             # -- it shouldn't (should be included in get_current_hidden_state already)
 
-        logits = torch.cat(logits_list, dim=1)  # Dimension of concatenation is T
+        # Dimension of concatenation is T
+        logits = torch.cat(logits_list, dim=1)
         # ? https://github.com/JoshFeldman95/translation/blob/7fba309e6914ee4235e95fa2ffd3294f7db5d6a1/models.py
         # ? https://github.com/SunSiShining/CopyRNN-Pytorch/blob/2e37cce64d44e7c99a624e7f47c1b9c57094dadf/pykp/model.py
         # ? https://github.com/sh951011/PyTorch-Seq2seq/blob/66c4c2bae6b8f432f87bf532c3004de2cee56f99/models/decoder.py
         return logits
-
 
     def update_beam(self, htilde_t, b_tm1_1, logpb_tm1, logpy_t):
         """
@@ -391,33 +384,41 @@ class EncoderDecoder(EncoderDecoderBase):
 
         # Define some dimensions
         N, K, t = logpb_tm1.shape[0], logpb_tm1.shape[1], b_tm1_1.shape[0]
-        KK = K * K  # K beams, each extended by K words -> K^2 (beam+word) pairs
-        NK, NKK = N * K, N * KK  # Each batch has K^2 extended (beam+word) pairs
+        # K beams, each extended by K words -> K^2 (beam+word) pairs
+        KK = K * K
+        # Each batch has K^2 extended (beam+word) pairs
+        NK, NKK = N * K, N * KK
 
         # Select K words for each beam as candidates
-        v_prob, v_id = logpy_t.topk(K, dim=-1) # (N, K, K)
+        v_prob, v_id = logpy_t.topk(K, dim=-1)  # (N, K, K)
 
         # Expand the candidates, find logpy_t of each
-        logpb_cand = logpb_tm1.unsqueeze(2).expand(N, K, K) + v_prob  # (N, K, K)
+        logpb_cand = logpb_tm1.unsqueeze(2).expand(
+            N, K, K) + v_prob  # (N, K, K)
         logpb_cand = logpb_cand.view(N, KK)  # (N, K*K)
 
         # Select K from the K^2 candidates
-        logpb_t, cand_id=logpb_cand.topk(K, dim=-1)  # (N, K)
+        logpb_t, cand_id = logpb_cand.topk(K, dim=-1)  # (N, K)
 
         # Select corresponding K words used to update the beams
         NK_steper = torch.arange(0, NKK, KK, dtype=cand_id.dtype,
-                            device=cand_id.device).unsqueeze(1).expand_as(cand_id)
-        cand_v_id = (cand_id + NK_steper).view(NK) # (NK, )
-        v_id = v_id.view(NKK).index_select(0, cand_v_id).view(NK, 1)  # (NKK, ) -> (NK, )
+                                 device=cand_id.device).unsqueeze(1).expand_as(cand_id)
+        cand_v_id = (cand_id + NK_steper).view(NK)  # (NK, )
+        v_id = v_id.view(NKK).index_select(
+            0, cand_v_id).view(NK, 1)  # (NKK, ) -> (NK, )
 
         # Select corresponding K beams and update b_t
         N_steper = torch.arange(0, NK, K, dtype=cand_id.dtype,
-                                 device=cand_id.device).unsqueeze(1).expand_as(cand_id)
-        b_t_id = (cand_id / K + N_steper).view(NK) # (NK, )
-        b_t_0 = htilde_t.view(NK, -1).index_select(0, b_t_id).view(N, K, -1)  # (N, K, 2H) -> (NK, 2H) -> (N, K, 2H)
-        b_tm1_selected = b_tm1_1.reshape(t, NK).index_select(1, b_t_id)  # (t, N, K) -> (t, NK)
+                                device=cand_id.device).unsqueeze(1).expand_as(cand_id)
+        b_t_id = (cand_id / K + N_steper).view(NK)  # (NK, )
+        # (N, K, 2H) -> (NK, 2H) -> (N, K, 2H)
+        b_t_0 = htilde_t.view(NK, -1).index_select(0, b_t_id).view(N, K, -1)
+        b_tm1_selected = b_tm1_1.reshape(t, NK).index_select(
+            1, b_t_id)  # (t, N, K) -> (t, NK)
         # print("Dimensions -- b_tm1_selected: {}, v_id: {}, N: {}, K:{}".format(
         #     b_tm1_selected.shape, v_id.reshape(t, NK).shape, N, K))
-        b_t_1 = torch.cat((b_tm1_selected, v_id.reshape(t, NK)), -1).view(t+1, N, K) # (t+1, NK) -> (t+1, N, K)
+        # (t+1, NK) -> (t+1, N, K)
+        b_t_1 = torch.cat(
+            (b_tm1_selected, v_id.reshape(t, NK)), -1).view(t+1, N, K)
 
         return b_t_0, b_t_1, logpb_t
