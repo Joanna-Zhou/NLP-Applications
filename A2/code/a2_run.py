@@ -352,7 +352,7 @@ def add_common_model_options(parser):
         'training'
     )
     parser.add_argument(
-        '--beam-width', metavar='K', type=lower_bound, default=4,
+        '--beam-width', metavar='K', type=lower_bound, default=1,
         help='The total number of paths to consider at one time during beam '
         'search'
     )

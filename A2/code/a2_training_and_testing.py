@@ -204,7 +204,7 @@ def compute_average_bleu_over_dataset(
 
             # 2. Performs a beam search by calling ``b_1 = model(F, F_lens)``
             # shape (T', N, self.beam_width)
-            b_1 = model(F, F_lens, on_max='halt')
+            b_1 = model(F, F_lens)
 
             # 3. Extracts the top path per beam as ``E_cand = b_1[..., 0]`` of shape (T', N)
             E_cand = b_1[:, :, 0]
