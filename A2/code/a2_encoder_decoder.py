@@ -42,7 +42,12 @@ class Encoder(EncoderBase):
 
     def get_all_rnn_inputs(self, F):
         '''compute input vectors for each source transcription'''
-        return self.embedding(F)  # (S, N) -> (S, N, I)
+        x = self.embedding(F).to(F.device)
+
+        # Mask x by seting to zeros if "padded"
+        x[(F == self.pad_id).nonzero(as_tuple=True)] = 0
+
+        return x  # (S, N) -> (S, N, I)
 
     def get_all_hidden_states(self, x, F_lens, h_pad):
         # Pack hidden states
@@ -51,10 +56,11 @@ class Encoder(EncoderBase):
         # compute all final hidden states for provided input sequence.
         outputs, hidden = self.rnn(x_packed)
         # Unpack hidden states
-        outputs, _ = torch.nn.utils.rnn.pad_packed_sequence(outputs, padding_value=h_pad)
+        outputs, _ = torch.nn.utils.rnn.pad_packed_sequence(
+            outputs, padding_value=h_pad, total_length=x.shape[0])
 
         # print("-----\nIn get_all_hidden_states, x: {} -> h: {}\n-----".format(x.shape, outputs.shape))
-        return outputs  # x: (S, N, I) -> outputs: (S, N, 2 * H)
+        return outputs.to(x.device)  # x: (S, N, I) -> outputs: (S, N, 2 * H)
 
 
 class DecoderWithoutAttention(DecoderBase):
@@ -95,21 +101,15 @@ class DecoderWithoutAttention(DecoderBase):
         # print("-----\nIn get_first_hidden_state, h: {} -> htilde_tm1: {}".format(h.shape, htilde_tm1.shape))
         # print("-- vs. expected dimension: h: (S, N, {}) -> htilde_tm1: (N, {})\n-----".format(
         #     self.hidden_state_size * 2, self.hidden_state_size * 2))
-        return htilde_tm1  # h: (S, N, 2 * H) -> htilde_tm1: (N, 2 * H)
+        return htilde_tm1.to(h.device)  # h: (S, N, 2 * H) -> htilde_tm1: (N, 2 * H)
 
     def get_current_rnn_input(self, E_tm1, htilde_tm1, h, F_lens):
         '''Get masked embedding input and concatenate with the previous hidden state to be the new input'''
-        mask = torch.where(E_tm1 == torch.tensor([self.pad_id]).to(h.device),
-                           torch.tensor([0.]).to(h.device), torch.tensor([1.]).to(h.device)).to(h.device)
-        embedded = self.embedding(E_tm1) * mask.view(-1, 1)
-
-        # xtilde_t = torch.stack((embedded, htilde_tm1))
-        xtilde_t = embedded
+        xtilde_t = self.embedding(E_tm1).to(h.device)
+        xtilde_t[(E_tm1 == self.pad_id).nonzero().flatten()] = 0
 
         # print("-----In get_current_rnn_input, htilde_tm1: {} -> xtilde_t: {}".format(
         #     htilde_tm1.shape, xtilde_t.shape))
-        # print("-- vs. expected dimension: htilde_tm1: (S, N, {}) -> xtilde_t: (N, {})\n-----".format(
-        #     self.hidden_state_size * 2, self.word_embedding_size + self.hidden_state_size))
         return xtilde_t
 
     def get_current_hidden_state(self, xtilde_t, htilde_tm1):
@@ -131,7 +131,7 @@ class DecoderWithoutAttention(DecoderBase):
 
         # print("-----\nIn get_current_logits, htilde_tm1: {} -> logits: {}\n-----".format(
         #     htilde_t.shape, logits.shape))
-        return logits  # htilde_t: (N, 2 * H) -> logits_t: (N, V)
+        return logits.to(htilde_t.device) # htilde_t: (N, 2 * H) -> logits_t: (N, V)
 
 
 class DecoderWithAttention(DecoderWithoutAttention):
@@ -164,13 +164,12 @@ class DecoderWithAttention(DecoderWithoutAttention):
     def get_first_hidden_state(self, h, F_lens):
         '''same as before, but initialize to zeros'''
         # h : (S, N, self.hidden_state_size) -> htilde_0 : (N, self.hidden_state_size)
-        return torch.zeros_like(h[-1], device=h.device)
+        return torch.zeros_like(h[-1], dtype=h.dtype, device=h.device)
 
     def get_current_rnn_input(self, E_tm1, htilde_tm1, h, F_lens):
         '''Update to account for attention. Use attend() for c_t'''
-        mask = torch.where(E_tm1 == torch.tensor([self.pad_id]).to(h.device),
-                           torch.tensor([0.]).to(h.device), torch.tensor([1.]).to(h.device)).to(h.device)
-        embedded = self.embedding(E_tm1) * mask.view(-1, 1)
+        embedded = self.embedding(E_tm1)
+        embedded[(E_tm1 == self.pad_id).nonzero().flatten()] = 0
 
         # If lstm, take only the hidden state (instead of the cell state)
         if self.cell_type == 'lstm':
