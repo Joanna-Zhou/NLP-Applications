@@ -60,7 +60,7 @@ def train_for_epoch(model, dataloader, optimizer, device):
 
     # 1. Defines a loss function using :class:`torch.nn.CrossEntropyLoss`,
     #    keeping track of what id the loss considers "padding"
-    loss_fn = torch.nn.CrossEntropyLoss(ignore_index=model.pad_id)
+    loss_fn = torch.nn.CrossEntropyLoss(ignore_index=model.target_eos)
     total_loss = 0
 
     # 2. For every iteration of the `dataloader` (which yields triples
@@ -77,7 +77,7 @@ def train_for_epoch(model, dataloader, optimizer, device):
 
         # 3. Calls ``logits = model(F, F_lens, E)`` to determine next-token
         #     probabilities.
-        logits = model(F, F_lens, E)
+        logits = model(F, F_lens, E, 'ignore')
 
         # 4. Modifies ``E`` for the loss function, getting rid of a token and
         #     replacing excess end-of-sequence tokens with padding using
@@ -87,9 +87,11 @@ def train_for_epoch(model, dataloader, optimizer, device):
 
         # 5. Flattens out the sequence dimension into the batch dimension of both
         #     ``logits`` and ``E``
-        logits_flat = logits.view(-1, logits.size(-1)) # (T - 1, N, V) -> ((T-1)*N, V)
-        E = E[:, 1:].view(-1, 1)  # target,  (N, T) -> (N, T-1) ->((T-1)*N, 1)
-
+        # logits_flat = logits.view(-1, logits.size(-1)) # (T - 1, N, V) -> ((T-1)*N, V)
+        # E = E[:, 1:].view(-1, 1)  # target,  (N, T) -> (N, T-1) ->((T-1)*N, 1)
+        E = E.transpose(0, 1)[:, 1:].reshape(-1)
+        loss = loss_fn(logits, E)
+        
         # 6. Calls ``loss = loss_fn(logits, E)`` to calculate the batch loss
         loss = loss_fn(logits, E)
         total_loss += loss
@@ -130,17 +132,14 @@ def compute_batch_total_bleu(E_ref, E_cand, target_sos, target_eos):
         The sum total BLEU score for across all elements in the batch. Use
         n-gram precision 4.
     '''
-    # refs, cands = E_ref.tolist(), E_cand.tolist()
-    batch_size = E_ref.shape[1]
+    refs, cands = E_ref.tolist(), E_cand.tolist()
     score, ngram = 0, 4
 
-    for n in range(batch_size):
-        ref, cand = E_ref[:, n], E_cand[:, n]
-        #? https://github.com/ryosuke071111/NLP_DLbasic/blob/2644451492e23648b8cded90c7edfb31438623ff/chap3/演習/materials/.ipynb_checkpoints/lecture_chap3_exercise_answer-checkpoint.ipynb
-        #TODO: check if the following should include the outer [] or not
-        ref = [ref[ref.index(target_sos):ref.index(target_eos)]]
-        cand = [cand[cand.index(target_sos):cand.index(target_eos)]]
-
+    for ref, cand in zip(refs, cands):
+        ref = " ".join([str(r) for r in ref]).replace(
+            str(target_eos), '').replace(str(target_sos), '').strip().split(' ')
+        cand = " ".join([str(c) for c in cand]).replace(
+            str(target_eos), '').replace(str(target_sos), '').strip().split(' ')
         score += a2_bleu_score.BLEU_score(ref, cand, ngram)
 
     return score
@@ -184,7 +183,7 @@ def compute_average_bleu_over_dataset(
     total_score, total_batches = 0, 0
 
     # For every iteration of the `dataloader` (which yields triples``F, F_lens, E_ref``):
-    for F, F_lens, E_ref in dataloader:
+    for F, F_lens, E_ref in tqdm(dataloader):
         # 1. Sends ``F`` to the appropriate device via ``F = F.to(device)``. Same
         # for ``F_lens``. No need for ``E_cand``, since it will always be
         # compared on the CPU.
@@ -195,7 +194,7 @@ def compute_average_bleu_over_dataset(
         b_1 = model(F, F_lens)  # shape (T', N, self.beam_width)
 
         # 3. Extracts the top path per beam as ``E_cand = b_1[..., 0]`` of shape (T', N)
-        E_cand = b_1[..., 0]
+        E_cand = b_1[:, 0]
 
         # 4. Computes the total BLEU score of the batch using func: `compute_batch_total_bleu`
         total_score += compute_batch_total_bleu(
