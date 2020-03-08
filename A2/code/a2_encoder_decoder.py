@@ -265,13 +265,10 @@ class EncoderDecoder(EncoderDecoderBase):
         """
 
         # # Define some dimensions
-        # N, K, t = logpb_tm1.shape[0], logpb_tm1.shape[1], b_tm1_1.shape[0]
-        # # K beams, each extended by K words -> K^2 (beam+word) pairs
-        # KK = K * K
-        # # Each batch has K^2 extended (beam+word) pairs
-        # NK, NKK = N * K, N * KK
-        (N, K) = logpb_tm1.shape[0]
+        (N, K) = logpb_tm1.shape
         t = b_tm1_1.shape[0]
+        KK = K * K # K beams, each extended by K words -> K^2 (beam+word) pairs
+        NK, NKK = N * K, N * KK # Each batch has K^2 extended (beam+word) pairs
 
         # Select K words for each beam as candidates
         v_prob, v_id = logpy_t.topk(K, dim=-1)  # (N, K, K)
