@@ -129,8 +129,8 @@ class DecoderWithoutAttention(DecoderBase):
         '''Calculate un-normalized log-probability distribution over output tokens for current time step'''
         logits = self.ff(htilde_t)
 
-        # print("-----\nIn get_current_logits, htilde_tm1: {} -> logits: {}\n-----".format(
-        #     htilde_t.shape, logits.shape))
+        print("-----\nIn get_current_logits, htilde_tm1: {} -> logits: {}\n-----".format(
+            htilde_t.shape, logits.shape))
         return logits  # htilde_t: (N, 2 * H) -> logits_t: (N, V)
 
 
