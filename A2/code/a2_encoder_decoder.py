@@ -46,11 +46,12 @@ class Encoder(EncoderBase):
 
     def get_all_hidden_states(self, x, F_lens, h_pad):
         # Pack hidden states
-        x_packed = torch.nn.utils.rnn.pack_padded_sequence(x, F_lens)
+        x_packed = torch.nn.utils.rnn.pack_padded_sequence(
+            x, F_lens, enforce_sorted=False)
         # compute all final hidden states for provided input sequence.
         outputs, hidden = self.rnn(x_packed)
         # Unpack hidden states
-        outputs, _ = torch.nn.utils.rnn.pad_packed_sequence(outputs)
+        outputs, _ = torch.nn.utils.rnn.pad_packed_sequence(outputs, padding_value=h_pad)
 
         # print("-----\nIn get_all_hidden_states, x: {} -> h: {}\n-----".format(x.shape, outputs.shape))
         return outputs  # x: (S, N, I) -> outputs: (S, N, 2 * H)
