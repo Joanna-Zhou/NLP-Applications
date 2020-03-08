@@ -129,8 +129,8 @@ class DecoderWithoutAttention(DecoderBase):
         '''Calculate un-normalized log-probability distribution over output tokens for current time step'''
         logits = self.ff(htilde_t)
 
-        print("-----\nIn get_current_logits, htilde_tm1: {} -> logits: {}\n-----".format(
-            htilde_t.shape, logits.shape))
+        # print("-----\nIn get_current_logits, htilde_tm1: {} -> logits: {}\n-----".format(
+        #     htilde_t.shape, logits.shape))
         return logits  # htilde_t: (N, 2 * H) -> logits_t: (N, V)
 
 
@@ -232,9 +232,7 @@ class EncoderDecoder(EncoderDecoderBase):
                                      cell_type=self.cell_type)
 
     def get_logits_for_teacher_forcing(self, h, F_lens, E):
-        # get logits over entire E. logits predict the *next* word in the sequence.
-        # h is of shape (S, N, 2 * H)
-        # logits (output) is of shape (T - 1, N, Vo)
+        '''get logits over entire E. logits predict the *next* word in the sequence.'''
 
         T = E.shape[0]
 
@@ -251,7 +249,9 @@ class EncoderDecoder(EncoderDecoderBase):
 
         # Dimension of concatenation is T
         logits = torch.cat(logits_list, dim=1)
-        return logits
+        print("-----\nIn get_logits_for_teacher_forcing, h: {} -> logits: {}\n-----".format(
+            h.shape, logits.shape))
+        return logits  # E: (T, N) + h: (S, N, 2 * H) -> logits: (T - 1, N, Vo)
 
     def update_beam(self, htilde_t, b_tm1_1, logpb_tm1, logpy_t):
         """
