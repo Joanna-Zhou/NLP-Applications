@@ -83,7 +83,7 @@ def train_for_epoch(model, dataloader, optimizer, device):
         #     replacing excess end-of-sequence tokens with padding using
         # ``model.get_target_padding_mask()`` and ``torch.masked_fill``
         pad_mask = model.get_target_padding_mask(E)
-        E = E.masked_fill(pad_mask, -float('inf'))
+        E = E.masked_fill(pad_mask, model.target_eos)
 
         # 5. Flattens out the sequence dimension into the batch dimension of both
         #     ``logits`` and ``E``
