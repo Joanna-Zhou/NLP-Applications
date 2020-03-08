@@ -58,91 +58,59 @@ def train_for_epoch(model, dataloader, optimizer, device):
     # If you are running into CUDA memory errors part way through training,
     # try "del F, F_lens, E, logits, loss" at the end of each iteration of
     # the loop.
-    # model.target_eos (99)or is it model.source_pad_id = target_sos (98)
-    padding = model.target_sos
-    criterion = torch.nn.CrossEntropyLoss(
-        ignore_index=padding, reduction='sum')
-    losses = 0
-    num_seq = 0
-    for (F, F_lens, E) in tqdm(dataloader):
-        F = F.to(device)  # (S,N)
-        F_lens = F_lens.to(device)  # (N)
-        E = E.to(device)  # (T-1,N)
+    # with torch.no_grad():
+    # 1. Defines a loss function using :class:`torch.nn.CrossEntropyLoss`,
+    #    keeping track of what id the loss considers "padding"
+    loss_fn = torch.nn.CrossEntropyLoss(ignore_index=model.target_eos)
+    total_loss = 0
+
+    # 2. For every iteration of the `dataloader` (which yields triples
+    #    ``F, F_lens, E``)
+    for F, F_lens, E in dataloader:
+        # 1. Sends ``F`` to the appropriate device via ``F = F.to(device)``. Same
+        #       for ``F_lens`` and ``E``.
+        F = F.to(device)
+        F_lens = F_lens.to(device)
+        E = E.to(device)
+
+        # 2. Zeros out the model's previous gradient with ``optimizer.zero_grad()``
         optimizer.zero_grad()
-        logits = model(F, F_lens, E)  # logits -> (T-1, N, V)
 
-        # step 4
-        E = E[1:, :]
-        # ignoring SOS tokens for all seqs for the masking
-        mask = model.get_target_padding_mask(E)
-        # masking extra eos tokens, (T-1, N), T-1 because we removed SOS
-        E = E.masked_fill(mask, padding)
-        # step 5
-        E = E.view(-1)
-        logits = logits.view(-1, logits.shape[2])
-        loss = criterion(logits, E)
+        # 3. Calls ``logits = model(F, F_lens, E)`` to determine next-token
+        #     probabilities.
+        logits = model(F, F_lens, E, 'ignore')
+        #TODO: print("logits: {},".format(logits.shape)) should return (16, 100, 20000) instead of (100, 320000)
+
+        # 4. Modifies ``E`` for the loss function, getting rid of a token and
+        #     replacing excess end-of-sequence tokens with padding using
+        # ``model.get_target_padding_mask()`` and ``torch.masked_fill``
+        pad_mask = model.get_target_padding_mask(E)
+        E = E.masked_fill(pad_mask, model.target_eos)
+
+        # 5. Flattens out the sequence dimension into the batch dimension of both
+        #     ``logits`` and ``E``
+        logits_flat = logits.view(-1, logits.size(-1)) # (T - 1, N, V) -> ((T-1)*N, V)
+        # print("T: {}, N: {}, V: {}".format(E.shape[0], E.shape[1], model.target_vocab_size))
+        E = E.transpose(0, 1)[:, 1:].reshape(-1)
+        # print("E: {}, logits_flat: {}".format(E.shape, logits_flat.shape))
+
+        # 6. Calls ``loss = loss_fn(logits, E)`` to calculate the batch loss
+        loss = loss_fn(logits_flat, E)
+        total_loss += loss
+
+        # 7. Calls ``loss.backward()`` to backpropagate gradients through
+        #     ``model``
         loss.backward()
-        optimizer.step()
-        losses = losses + loss.item()
-        num_seq = num_seq + F_lens.shape[0]
 
+        # 8. Calls ``optim.step()`` to update model parameters
+        optimizer.step()
+
+        # To prevent CUDA memory errors part way through training
         del F, F_lens, E, logits, loss
 
-    avg_loss = (losses/num_seq if num_seq != 0 else 0)
-    # with torch.no_grad():
-    #     # 1. Defines a loss function using :class:`torch.nn.CrossEntropyLoss`,
-    #     #    keeping track of what id the loss considers "padding"
-    #     loss_fn = torch.nn.CrossEntropyLoss(ignore_index=model.target_eos)
-    #     total_loss = 0
-
-    #     # 2. For every iteration of the `dataloader` (which yields triples
-    #     #    ``F, F_lens, E``)
-    #     for F, F_lens, E in dataloader:
-    #         # 1. Sends ``F`` to the appropriate device via ``F = F.to(device)``. Same
-    #         #       for ``F_lens`` and ``E``.
-    #         F = F.to(device)
-    #         F_lens = F_lens.to(device)
-    #         E = E.to(device)
-
-    #         # 2. Zeros out the model's previous gradient with ``optimizer.zero_grad()``
-    #         optimizer.zero_grad()
-
-    #         # 3. Calls ``logits = model(F, F_lens, E)`` to determine next-token
-    #         #     probabilities.
-    #         logits = model(F, F_lens, E, 'ignore')
-    #         #TODO: print("logits: {},".format(logits.shape)) should return (16, 100, 20000) instead of (100, 320000)
-
-    #         # 4. Modifies ``E`` for the loss function, getting rid of a token and
-    #         #     replacing excess end-of-sequence tokens with padding using
-    #         # ``model.get_target_padding_mask()`` and ``torch.masked_fill``
-    #         pad_mask = model.get_target_padding_mask(E)
-    #         E = E.masked_fill(pad_mask, model.target_eos)
-
-    #         # 5. Flattens out the sequence dimension into the batch dimension of both
-    #         #     ``logits`` and ``E``
-    #         logits_flat = logits.view(-1, logits.size(-1)) # (T - 1, N, V) -> ((T-1)*N, V)
-    #         # print("T: {}, N: {}, V: {}".format(E.shape[0], E.shape[1], model.target_vocab_size))
-    #         E = E.transpose(0, 1)[:, 1:].reshape(-1)
-    #         # print("E: {}, logits_flat: {}".format(E.shape, logits_flat.shape))
-
-    #         # 6. Calls ``loss = loss_fn(logits, E)`` to calculate the batch loss
-    #         loss = loss_fn(logits_flat, E)
-    #         total_loss += loss
-
-    #         # 7. Calls ``loss.backward()`` to backpropagate gradients through
-    #         #     ``model``
-    #         loss.backward()
-
-    #         # 8. Calls ``optim.step()`` to update model parameters
-    #         optimizer.step()
-
-    #         # To prevent CUDA memory errors part way through training
-    #         del F, F_lens, E, logits, loss
-
-    #     avg_bleu = total_loss / len(dataloader.data)
-
     # 3. Returns the average loss over sequences
-    return 
+    avg_bleu = total_loss / len(dataloader.data)
+    return avg_bleu
 
 
 def compute_batch_total_bleu(E_ref, E_cand, target_sos, target_eos):
@@ -167,16 +135,23 @@ def compute_batch_total_bleu(E_ref, E_cand, target_sos, target_eos):
         The sum total BLEU score for across all elements in the batch. Use
         n-gram precision 4.
     '''
+    score, ngram, N = 0, 4, E_ref.shape[1]
     refs, cands = E_ref.tolist(), E_cand.tolist()
-    score, ngram = 0, 4
 
     for ref, cand in zip(refs, cands):
-        ref = " ".join([str(r) for r in ref]).replace(
-            str(target_eos), '').replace(str(target_sos), '').strip().split(' ')
-        cand = " ".join([str(c) for c in cand]).replace(
-            str(target_eos), '').replace(str(target_sos), '').strip().split(' ')
-        score += a2_bleu_score.BLEU_score(ref, cand, ngram)
+        ref = ref.squeeze(0)
+        ref = ref[((ref != target_sos) & (ref != target_eos)
+                   ).nonzero().squeeze()].tolist()
+        if not isinstance(ref, list):
+            ref = [ref]
 
+        cand = cand.squeeze(0)
+        cand = cand[((cand != target_sos) & (cand != target_eos)
+                     ).nonzero().squeeze()].tolist()
+        if not isinstance(cand, list):
+            cand = [cand]
+
+        score += a2_bleu_score.BLEU_score(ref, cand, ngram)
     return score
 
 
@@ -215,26 +190,34 @@ def compute_average_bleu_over_dataset(
         The total BLEU score summed over all sequences divided by the number of
         sequences
     '''
-    total_score, total_batches = 0, 0
 
-    # For every iteration of the `dataloader` (which yields triples``F, F_lens, E_ref``):
-    for F, F_lens, E_ref in tqdm(dataloader):
-        # 1. Sends ``F`` to the appropriate device via ``F = F.to(device)``. Same
-        # for ``F_lens``. No need for ``E_cand``, since it will always be
-        # compared on the CPU.
-        batch_size = F.shape[1]
-        F, F_lens = F.to(device), F_lens.to(device)
+    with torch.no_grad():
+        total_score, total_batches = 0, 0
 
-        # 2. Performs a beam search by calling ``b_1 = model(F, F_lens)``
-        b_1 = model(F, F_lens)  # shape (T', N, self.beam_width)
+        # For every iteration of the `dataloader` (which yields triples``F, F_lens, E_ref``):
+        for F, F_lens, E_ref in tqdm(dataloader):
+            # 1. Sends ``F`` to the appropriate device via ``F = F.to(device)``. Same
+            # for ``F_lens``. No need for ``E_cand``, since it will always be
+            # compared on the CPU.
+            batch_size = F.shape[1]
+            F, F_lens = F.to(device), F_lens.to(device)
 
-        # 3. Extracts the top path per beam as ``E_cand = b_1[..., 0]`` of shape (T', N)
-        E_cand = b_1[:, 0]
+            # 2. Performs a beam search by calling ``b_1 = model(F, F_lens)``
+            # shape (T', N, self.beam_width)
+            b_1 = model(F, F_lens, on_max='halt')
 
-        # 4. Computes the total BLEU score of the batch using func: `compute_batch_total_bleu`
-        total_score += compute_batch_total_bleu(
-            E_ref, E_cand, target_sos, target_eos)
-        total_batches += 1
+            # 3. Extracts the top path per beam as ``E_cand = b_1[..., 0]`` of shape (T', N)
+            E_cand = b_1[:, :, 0]
+
+            # 4. Computes the total BLEU score of the batch using func: `compute_batch_total_bleu`
+            total_score += compute_batch_total_bleu(
+                E_ref, E_cand, target_sos, target_eos)
+            total_batches += 1
+
+            del F, F_lens, E_cand, b_1, E_ref
 
     # Returns the average per-sequence BLEU score
-    return total_score / (total_batches * batch_size)
+    avg_bleu = total_score / \
+        len(dataloader.data) if len(dataloader.data) != 0 else 0
+
+    return avg_bleu
