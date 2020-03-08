@@ -58,60 +58,91 @@ def train_for_epoch(model, dataloader, optimizer, device):
     # If you are running into CUDA memory errors part way through training,
     # try "del F, F_lens, E, logits, loss" at the end of each iteration of
     # the loop.
-    with torch.no_grad():
-        # 1. Defines a loss function using :class:`torch.nn.CrossEntropyLoss`,
-        #    keeping track of what id the loss considers "padding"
-        loss_fn = torch.nn.CrossEntropyLoss(ignore_index=model.target_eos)
-        total_loss = 0
+    # model.target_eos (99)or is it model.source_pad_id = target_sos (98)
+    padding = model.target_sos
+    criterion = torch.nn.CrossEntropyLoss(
+        ignore_index=padding, reduction='sum')
+    losses = 0
+    num_seq = 0
+    for (F, F_lens, E) in tqdm(dataloader):
+        F = F.to(device)  # (S,N)
+        F_lens = F_lens.to(device)  # (N)
+        E = E.to(device)  # (T-1,N)
+        optimizer.zero_grad()
+        logits = model(F, F_lens, E)  # logits -> (T-1, N, V)
 
-        # 2. For every iteration of the `dataloader` (which yields triples
-        #    ``F, F_lens, E``)
-        for F, F_lens, E in dataloader:
-            # 1. Sends ``F`` to the appropriate device via ``F = F.to(device)``. Same
-            #       for ``F_lens`` and ``E``.
-            F = F.to(device)
-            F_lens = F_lens.to(device)
-            E = E.to(device)
+        # step 4
+        E = E[1:, :]
+        # ignoring SOS tokens for all seqs for the masking
+        mask = model.get_target_padding_mask(E)
+        # masking extra eos tokens, (T-1, N), T-1 because we removed SOS
+        E = E.masked_fill(mask, padding)
+        # step 5
+        E = E.view(-1)
+        logits = logits.view(-1, logits.shape[2])
+        loss = criterion(logits, E)
+        loss.backward()
+        optimizer.step()
+        losses = losses + loss.item()
+        num_seq = num_seq + F_lens.shape[0]
 
-            # 2. Zeros out the model's previous gradient with ``optimizer.zero_grad()``
-            optimizer.zero_grad()
+        del F, F_lens, E, logits, loss
 
-            # 3. Calls ``logits = model(F, F_lens, E)`` to determine next-token
-            #     probabilities.
-            logits = model(F, F_lens, E, 'ignore')
-            #TODO: print("logits: {},".format(logits.shape)) should return (16, 100, 20000) instead of (100, 320000)
+    avg_loss = (losses/num_seq if num_seq != 0 else 0)
+    # with torch.no_grad():
+    #     # 1. Defines a loss function using :class:`torch.nn.CrossEntropyLoss`,
+    #     #    keeping track of what id the loss considers "padding"
+    #     loss_fn = torch.nn.CrossEntropyLoss(ignore_index=model.target_eos)
+    #     total_loss = 0
 
-            # 4. Modifies ``E`` for the loss function, getting rid of a token and
-            #     replacing excess end-of-sequence tokens with padding using
-            # ``model.get_target_padding_mask()`` and ``torch.masked_fill``
-            pad_mask = model.get_target_padding_mask(E)
-            E = E.masked_fill(pad_mask, model.target_eos)
+    #     # 2. For every iteration of the `dataloader` (which yields triples
+    #     #    ``F, F_lens, E``)
+    #     for F, F_lens, E in dataloader:
+    #         # 1. Sends ``F`` to the appropriate device via ``F = F.to(device)``. Same
+    #         #       for ``F_lens`` and ``E``.
+    #         F = F.to(device)
+    #         F_lens = F_lens.to(device)
+    #         E = E.to(device)
 
-            # 5. Flattens out the sequence dimension into the batch dimension of both
-            #     ``logits`` and ``E``
-            logits_flat = logits.view(-1, logits.size(-1)) # (T - 1, N, V) -> ((T-1)*N, V)
-            # print("T: {}, N: {}, V: {}".format(E.shape[0], E.shape[1], model.target_vocab_size))
-            E = E.transpose(0, 1)[:, 1:].reshape(-1)
-            # print("E: {}, logits_flat: {}".format(E.shape, logits_flat.shape))
+    #         # 2. Zeros out the model's previous gradient with ``optimizer.zero_grad()``
+    #         optimizer.zero_grad()
 
-            # 6. Calls ``loss = loss_fn(logits, E)`` to calculate the batch loss
-            loss = loss_fn(logits_flat, E)
-            total_loss += loss
+    #         # 3. Calls ``logits = model(F, F_lens, E)`` to determine next-token
+    #         #     probabilities.
+    #         logits = model(F, F_lens, E, 'ignore')
+    #         #TODO: print("logits: {},".format(logits.shape)) should return (16, 100, 20000) instead of (100, 320000)
 
-            # 7. Calls ``loss.backward()`` to backpropagate gradients through
-            #     ``model``
-            loss.backward()
+    #         # 4. Modifies ``E`` for the loss function, getting rid of a token and
+    #         #     replacing excess end-of-sequence tokens with padding using
+    #         # ``model.get_target_padding_mask()`` and ``torch.masked_fill``
+    #         pad_mask = model.get_target_padding_mask(E)
+    #         E = E.masked_fill(pad_mask, model.target_eos)
 
-            # 8. Calls ``optim.step()`` to update model parameters
-            optimizer.step()
+    #         # 5. Flattens out the sequence dimension into the batch dimension of both
+    #         #     ``logits`` and ``E``
+    #         logits_flat = logits.view(-1, logits.size(-1)) # (T - 1, N, V) -> ((T-1)*N, V)
+    #         # print("T: {}, N: {}, V: {}".format(E.shape[0], E.shape[1], model.target_vocab_size))
+    #         E = E.transpose(0, 1)[:, 1:].reshape(-1)
+    #         # print("E: {}, logits_flat: {}".format(E.shape, logits_flat.shape))
 
-            # To prevent CUDA memory errors part way through training
-            del F, F_lens, E, logits, loss
+    #         # 6. Calls ``loss = loss_fn(logits, E)`` to calculate the batch loss
+    #         loss = loss_fn(logits_flat, E)
+    #         total_loss += loss
 
-        avg_bleu = total_loss / len(dataloader.data)
+    #         # 7. Calls ``loss.backward()`` to backpropagate gradients through
+    #         #     ``model``
+    #         loss.backward()
+
+    #         # 8. Calls ``optim.step()`` to update model parameters
+    #         optimizer.step()
+
+    #         # To prevent CUDA memory errors part way through training
+    #         del F, F_lens, E, logits, loss
+
+    #     avg_bleu = total_loss / len(dataloader.data)
 
     # 3. Returns the average loss over sequences
-    return avg_bleu
+    return 
 
 
 def compute_batch_total_bleu(E_ref, E_cand, target_sos, target_eos):
