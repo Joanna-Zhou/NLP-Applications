@@ -90,7 +90,7 @@ def train_for_epoch(model, dataloader, optimizer, device):
         logits_flat = logits.view(-1, logits.size(-1)) # (T - 1, N, V) -> ((T-1)*N, V)
         # E_1 = E[:, 1:].view(-1, 1)  # target,  (N, T) -> (N, T-1) ->((T-1)*N, 1)
         print("T: {}, N: {}, V: {}".format(
-            E.shape[0], E.shape[1], self.model.target_vocab_size))
+            E.shape[0], E.shape[1], model.target_vocab_size))
         E = E.transpose(0, 1)[:, 1:].reshape(-1)
         print("E: {}, logits: {}".format(
             E.shape, logits_flat.shape))
