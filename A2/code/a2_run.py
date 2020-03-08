@@ -97,13 +97,14 @@ def train(opts):
         model.train()
         loss = a2_training_and_testing.train_for_epoch(
             model, train_dataloader, optimizer, opts.device)
-        model.eval()
-        bleu = a2_training_and_testing.compute_average_bleu_over_dataset(
-            model, dev_dataloader,
-            dev_dataloader.dataset.target_sos,
-            dev_dataloader.dataset.target_eos,
-            opts.device,
-        )
+        with torch.no_grad():
+            model.eval()
+            bleu = a2_training_and_testing.compute_average_bleu_over_dataset(
+                model, dev_dataloader,
+                dev_dataloader.dataset.target_sos,
+                dev_dataloader.dataset.target_eos,
+                opts.device,
+            )
         print(f'Epoch {epoch}: loss={loss}, BLEU={bleu}')
         if bleu < best_bleu:
             num_poor += 1
@@ -133,13 +134,14 @@ def test(opts):
     model.load_state_dict(state_dict)
     del state_dict
     model.to(opts.device)
-    model.eval()
-    bleu = a2_training_and_testing.compute_average_bleu_over_dataset(
-        model, dataloader,
-        dataloader.dataset.target_sos,
-        dataloader.dataset.target_eos,
-        opts.device,
-    )
+    with torch.no_grad():
+        model.eval()
+        bleu = a2_training_and_testing.compute_average_bleu_over_dataset(
+            model, dataloader,
+            dataloader.dataset.target_sos,
+            dataloader.dataset.target_eos,
+            opts.device,
+        )
     print(f'The average BLEU score over the test set was {bleu}')
 
 
