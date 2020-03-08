@@ -87,13 +87,14 @@ def train_for_epoch(model, dataloader, optimizer, device):
 
         # 5. Flattens out the sequence dimension into the batch dimension of both
         #     ``logits`` and ``E``
-        # logits_flat = logits.view(-1, logits.size(-1)) # (T - 1, N, V) -> ((T-1)*N, V)
-        # E = E[:, 1:].view(-1, 1)  # target,  (N, T) -> (N, T-1) ->((T-1)*N, 1)
+        logits_flat = logits.view(-1, logits.size(-1)) # (T - 1, N, V) -> ((T-1)*N, V)
+        E_1 = E[:, 1:].view(-1, 1)  # target,  (N, T) -> (N, T-1) ->((T-1)*N, 1)
         E = E.transpose(0, 1)[:, 1:].reshape(-1)
-        print("E: {}, logits: {}".format(E.shape, logits.shape))
+        print("E1: {}, E: {}, logits: {}".format(
+            E_1.shape, E.shape, logits_flat.shape))
         
         # 6. Calls ``loss = loss_fn(logits, E)`` to calculate the batch loss
-        loss = loss_fn(logits, E)
+        loss = loss_fn(logits_flat, E)
         total_loss += loss
 
         # 7. Calls ``loss.backward()`` to backpropagate gradients through
