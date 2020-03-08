@@ -53,19 +53,12 @@ def n_gram_precision(reference, candidate, n):
     '''
     reference_ngrams = grouper(reference, n)
     candidate_ngrams = grouper(candidate, n)
-    candidate_match = 0
-    candidate_all = len(candidate_ngrams)
 
-    for cand_ngram in candidate_ngrams:
-        print(cand_ngram, cand_ngram in reference_ngrams)
-        if cand_ngram in reference_ngrams:
-            candidate_match += 1
-        # Capped version, which we don't use here
-        # if any([cand_ngram in reference_ngrams]):
-        #     candidate_match += 1
+    candidate_matches = sum(
+        [1 for cand in candidate_ngrams if cand in reference_ngrams])
 
     # print("{}-gram precision: {}/{}".format(n, candidate_match, candidate_all))
-    return candidate_match / candidate_all
+    return float(candidate_matches / len(candidate_ngrams)) if len(candidate_ngrams) >= n else 0
 
 
 def brevity_penalty(reference, candidate):
@@ -86,7 +79,7 @@ def brevity_penalty(reference, candidate):
         of 0 length, `BP` is 0.
     '''
     reference_len, candidate_len = len(reference), len(candidate)
-    brevity = reference_len / candidate_len
+    brevity = reference_len / candidate_len if candidate_len != 0 else 0
 
     return 1 if brevity < 1 else exp(1 - brevity)
 
@@ -116,4 +109,4 @@ def BLEU_score(reference, hypothesis, n):
     for n in range(1, n+1):
         prec_1ton *= n_gram_precision(reference, hypothesis, n)
 
-    return brevity_penalty(reference, hypothesis) * (prec_1ton ** (1/n))
+    return float(brevity_penalty(reference, hypothesis) * (prec_1ton ** (1./n)))
