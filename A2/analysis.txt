@@ -1,0 +1,4 @@
+• The printout after every epoch of the training loop of both the model with attention and without.
+Clearly indicate which is which.
+• The average BLEU score reported on the test set for each model. Again, clearly indicate which is which.
+• A brief discussion on your findings. Was there a discrepancy in between training and testing results? Why do you think that is? If one model did better than the other, why do you think that is?
