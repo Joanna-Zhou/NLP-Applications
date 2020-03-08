@@ -90,7 +90,7 @@ def train_for_epoch(model, dataloader, optimizer, device):
         # logits_flat = logits.view(-1, logits.size(-1)) # (T - 1, N, V) -> ((T-1)*N, V)
         # E = E[:, 1:].view(-1, 1)  # target,  (N, T) -> (N, T-1) ->((T-1)*N, 1)
         E = E.transpose(0, 1)[:, 1:].reshape(-1)
-        loss = loss_fn(logits, E)
+        print("E: {}, logits: {}".format(E.shape, logits.shape))
         
         # 6. Calls ``loss = loss_fn(logits, E)`` to calculate the batch loss
         loss = loss_fn(logits, E)
