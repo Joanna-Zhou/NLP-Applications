@@ -61,6 +61,7 @@ def train_for_epoch(model, dataloader, optimizer, device):
     # with torch.no_grad():
     # 1. Defines a loss function using :class:`torch.nn.CrossEntropyLoss`,
     #    keeping track of what id the loss considers "padding"
+    print("Training in process...")
     loss_fn = torch.nn.CrossEntropyLoss(ignore_index=model.target_eos)
     total_loss, total_seq = 0, 0
 
