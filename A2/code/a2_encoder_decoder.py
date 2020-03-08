@@ -263,43 +263,67 @@ class EncoderDecoder(EncoderDecoderBase):
             b_t = max of logpb_cand, for both b_t_1 and b_t_0
         """
 
-        # Define some dimensions
-        N, K, t = logpb_tm1.shape[0], logpb_tm1.shape[1], b_tm1_1.shape[0]
-        # K beams, each extended by K words -> K^2 (beam+word) pairs
-        KK = K * K
-        # Each batch has K^2 extended (beam+word) pairs
-        NK, NKK = N * K, N * KK
+        # # Define some dimensions
+        # N, K, t = logpb_tm1.shape[0], logpb_tm1.shape[1], b_tm1_1.shape[0]
+        # # K beams, each extended by K words -> K^2 (beam+word) pairs
+        # KK = K * K
+        # # Each batch has K^2 extended (beam+word) pairs
+        # NK, NKK = N * K, N * KK
 
-        # Select K words for each beam as candidates
-        v_prob, v_id = logpy_t.topk(K, dim=-1)  # (N, K, K)
+        # # Select K words for each beam as candidates
+        # v_prob, v_id = logpy_t.topk(K, dim=-1)  # (N, K, K)
 
-        # Expand the candidates, find logpy_t of each
-        logpb_cand = logpb_tm1.unsqueeze(2).expand(
-            N, K, K) + v_prob  # (N, K, K)
-        logpb_cand = logpb_cand.view(N, KK)  # (N, K*K)
+        # # Expand the candidates, find logpy_t of each
+        # logpb_cand = logpb_tm1.unsqueeze(2).expand(
+        #     N, K, K) + v_prob  # (N, K, K)
+        # logpb_cand = logpb_cand.view(N, KK)  # (N, K*K)
 
-        # Select K from the K^2 candidates
-        logpb_t, cand_id = logpb_cand.topk(K, dim=-1)  # (N, K)
+        # # Select K from the K^2 candidates
+        # logpb_t, cand_id = logpb_cand.topk(K, dim=-1)  # (N, K)
 
-        # Select corresponding K words used to update the beams
-        NK_steper = torch.arange(0, NKK, KK, dtype=cand_id.dtype,
-                                 device=cand_id.device).unsqueeze(1).expand_as(cand_id)
-        cand_v_id = (cand_id + NK_steper).view(NK)  # (NK, )
-        v_id = v_id.view(NKK).index_select(
-            0, cand_v_id).view(NK, 1)  # (NKK, ) -> (NK, )
+        # # Select corresponding K words used to update the beams
+        # NK_steper = torch.arange(0, NKK, KK, dtype=cand_id.dtype,
+        #                          device=cand_id.device).unsqueeze(1).expand_as(cand_id)
+        # cand_v_id = (cand_id + NK_steper).view(NK)  # (NK, )
+        # v_id = v_id.view(NKK).index_select(
+        #     0, cand_v_id).view(NK, 1)  # (NKK, ) -> (NK, )
 
-        # Select corresponding K beams and update b_t
-        N_steper = torch.arange(0, NK, K, dtype=cand_id.dtype,
-                                device=cand_id.device).unsqueeze(1).expand_as(cand_id)
-        b_t_id = (cand_id / K + N_steper).view(NK)  # (NK, )
-        # (N, K, 2H) -> (NK, 2H) -> (N, K, 2H)
-        b_t_0 = htilde_t.view(NK, -1).index_select(0, b_t_id).view(N, K, -1)
-        b_tm1_selected = b_tm1_1.reshape(t, NK).index_select(
-            1, b_t_id)  # (t, N, K) -> (t, NK)
-        # print("Dimensions -- b_tm1_selected: {}, v_id: {}, N: {}, K:{}".format(
-        #     b_tm1_selected.shape, v_id.reshape(t, NK).shape, N, K))
-        # (t+1, NK) -> (t+1, N, K)
-        b_t_1 = torch.cat(
-            (b_tm1_selected, v_id.reshape(t, NK)), -1).view(t+1, N, K)
+        # # Select corresponding K beams and update b_t
+        # N_steper = torch.arange(0, NK, K, dtype=cand_id.dtype,
+        #                         device=cand_id.device).unsqueeze(1).expand_as(cand_id)
+        # b_t_id = (cand_id / K + N_steper).view(NK)  # (NK, )
+        # # (N, K, 2H) -> (NK, 2H) -> (N, K, 2H)
+        # b_t_0 = htilde_t.view(NK, -1).index_select(0, b_t_id).view(N, K, -1)
+        # b_tm1_selected = b_tm1_1.reshape(t, NK).index_select(
+        #     1, b_t_id)  # (t, N, K) -> (t, NK)
+        # # print("Dimensions -- b_tm1_selected: {}, v_id: {}, N: {}, K:{}".format(
+        # #     b_tm1_selected.shape, v_id.reshape(t, NK).shape, N, K))
+        # # (t+1, NK) -> (t+1, N, K)
+        # b_t_1 = torch.cat(
+        #     (b_tm1_selected, v_id.reshape(t, NK)), -1).view(t+1, N, K)
 
+        # return b_t_0, b_t_1, logpb_t
+
+        V = logpy_t.size()[-1]
+        all_paths = logpb_tm1.unsqueeze(-1) + logpy_t  # (N, K, V), add logprobs for new extensions
+        all_paths = all_paths.view((all_paths.shape[0], -1))  # (N, K*V)
+        logpb_t, v = all_paths.topk(self.beam_width,
+                                    -1,
+                                    largest=True,
+                                    sorted=True)  # take beam_width best possible extensions
+        logpb_t = logpb_t  # (N, K)
+        # v is (N, K)
+        # v are the indices of the maximal values.
+        paths = torch.div(v, V)  # paths chosen to be kept
+        v = torch.remainder(v, V)  # the indices of the extended words that are kept
+        # choose the paths from b_tm1_1 that were kept in our next propogation
+        b_tm1_1 = b_tm1_1.gather(2, paths.unsqueeze(0).expand_as(b_tm1_1))
+        # choose the htdile that coorespond to the taken paths
+        if self.cell_type == 'lstm':
+          b_t_0 = (htilde_t[0].gather(1, paths.unsqueeze(-1).expand_as(htilde_t[0])),
+                   htilde_t[1].gather(1, paths.unsqueeze(-1).expand_as(htilde_t[1])))
+        else:
+          b_t_0 = htilde_t.gather(1, paths.unsqueeze(-1).expand_as(htilde_t))
+        v = v.unsqueeze(0)  # (1, N, K)
+        b_t_1 = torch.cat([b_tm1_1, v], dim=0)
         return b_t_0, b_t_1, logpb_t

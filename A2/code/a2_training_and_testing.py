@@ -78,7 +78,7 @@ def train_for_epoch(model, dataloader, optimizer, device):
         # 3. Calls ``logits = model(F, F_lens, E)`` to determine next-token
         #     probabilities.
         logits = model(F, F_lens, E, 'ignore')
-        print("logits: {},".format(logits.shape))
+        #TODO: print("logits: {},".format(logits.shape)) should return (16, 100, 20000) instead of (100, 320000)
 
         # 4. Modifies ``E`` for the loss function, getting rid of a token and
         #     replacing excess end-of-sequence tokens with padding using
@@ -94,7 +94,7 @@ def train_for_epoch(model, dataloader, optimizer, device):
         E = E.transpose(0, 1)[:, 1:].reshape(-1)
         print("logits: {}, logits_flat: {}".format(
             logits.shape, logits_flat.shape))
-        
+
         # 6. Calls ``loss = loss_fn(logits, E)`` to calculate the batch loss
         loss = loss_fn(logits_flat, E)
         total_loss += loss
