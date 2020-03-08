@@ -202,16 +202,17 @@ class DecoderWithAttention(DecoderWithoutAttention):
         return torch.nn.functional.softmax(e_t, 0)
 
     def get_energy_scores(self, htilde_t, h):
-        # Determine energy scores via cosine similarity
-        # htilde_t is of shape (N, 2 * H)
-        # h is of shape (S, N, 2 * H)
-        # e_t (output) is of shape (S, N)
-        S, N = h.shape[0], h.shape[1]
-        energy = torch.zeros(S, N, device=h.device)
-        for s in range(S):
-            energy[s] = torch.nn.functional.cosine_similarity(
-                htilde_t, h[s], dim=1)
-        return energy
+        '''Determine energy scores via cosine similarity'''
+        S = h.shape[0]
+        # e_t = torch.zeros(S, N, device=h.device)
+        # for s in range(S):
+        #     e_t[s] = torch.nn.functional.cosine_similarity(
+        #         htilde_t, h[s], dim=1)
+
+        energy_func = torch.nn.CosineSimilarity(dim=2)
+        # htilde_t: (N, 2 * H) -> h: (S, N, 2 * H)
+        e_t = energy_func(htilde_t.unsqueeze(0).repeat(S, 1, 1), h)
+        return e_t  # (S, N)
 
 
 class EncoderDecoder(EncoderDecoderBase):
