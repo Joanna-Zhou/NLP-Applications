@@ -1,11 +1,10 @@
 #!/bin/bash
+# Setup: chmod +x a2_run.sh
 
-# For a full run, run `sh a2_run.sh local init all` or `sh a2_run.sh cs init all`
+# For a full run, run `./a2_run.sh cs init all`
 
-# For initialization only, run `sh a2_run.sh local init` or `sh a2_run.sh cs init`
-# For a debug run, run `sh a2_run.sh local skip wo` (or `w`, `all`)
-
-# For now, i should only need `sh a2_run.sh local init` and `sh a2_run.sh local skip wo`
+# For initialization only, run `./a2_run.sh cs init`
+# For a debug run, run `./a2_run.sh cs skip wo` (or `w`, `all`)
 
 if [ "$1" == "local" ]; then
     echo '--- Running locally ---'
