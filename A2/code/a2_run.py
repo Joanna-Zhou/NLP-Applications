@@ -186,7 +186,7 @@ def build_vocab_parser(subparsers):
         'path ends with ".gz", will gzip the file.'
     )
     parser.add_argument(
-        '--max-vocab', metavar='V', type=lower_bound, default=20000,
+        '--max-vocab', metavar='V', type=lower_bound, default=50,
         help='The maximum size of the vocabulary. Words with lower frequency '
         'will be cut first'
     )

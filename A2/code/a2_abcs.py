@@ -824,7 +824,7 @@ class EncoderDecoderBase(torch.nn.Module, metaclass=abc.ABCMeta):
                 htilde_t = htilde_t.view(
                     -1, self.beam_width, 2 * self.encoder_hidden_size)
             b_t_0, b_t_1, logpb_t = self.update_beam(
-                htilde_t, b_tm1_1, logpb_tm1, logpy_t) #! This is where update_beam is used
+                htilde_t, b_tm1_1, logpb_tm1, logpy_t)
             del logits_t, logpy_t, finished, htilde_t
             if self.cell_type == 'lstm':
                 htilde_tm1 = (
