@@ -88,7 +88,7 @@ class DecoderWithoutAttention(DecoderBase):
         # Take each hidden state at F_len[n-1]
         forward = h[-1, F_lens, :hidden_state_mid]
         backward = h[0, F_lens, hidden_state_mid:]
-        
+
         # Concatenate them together
         htilde_tm1 = torch.cat((forward, backward), dim=1).squeeze(1)
 
@@ -238,10 +238,10 @@ class EncoderDecoder(EncoderDecoderBase):
 
         # Initialize output results (i.e., just logits here, no token needed)
         logits_list = []
-        
+
         # Initialize logit and hidden state corresponding to <SOS>
         logit, h_tilde = self.decoder.forward(E[0], None, h, F_lens)
-        
+
         # Loop through the sequence(s) with E[t] as the input word (as opposed to output at t)
         for t in range(T-1):
             logit, h_tilde = self.decoder(E[t], h_tilde, h, F_lens) # Each logits: (N, V)
@@ -249,8 +249,9 @@ class EncoderDecoder(EncoderDecoderBase):
 
         # Dimension of concatenation is T
         logits = torch.stack(logits_list, dim=0)
-        print("-----\nIn get_logits_for_teacher_forcing, h: {} -> logits: {}\n-----".format(
-            h.shape, logits.shape)) # current: 100, 320000 = N, T-1*Vo
+
+        # print("-----\nIn get_logits_for_teacher_forcing, h: {} -> logits: {}\n-----".format(
+        #     h.shape, logits.shape)) # current: 100, 320000 = N, T-1*Vo
         return logits  # E: (T, N) + h: (S, N, 2 * H) -> logits: (T - 1, N, V)
 
     def update_beam(self, htilde_t, b_tm1_1, logpb_tm1, logpy_t):
