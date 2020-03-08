@@ -62,7 +62,7 @@ def train_for_epoch(model, dataloader, optimizer, device):
     # 1. Defines a loss function using :class:`torch.nn.CrossEntropyLoss`,
     #    keeping track of what id the loss considers "padding"
     loss_fn = torch.nn.CrossEntropyLoss(ignore_index=model.target_eos)
-    total_loss = 0
+    total_loss, total_seq = 0, 0
 
     # 2. For every iteration of the `dataloader` (which yields triples
     #    ``F, F_lens, E``)
@@ -97,6 +97,7 @@ def train_for_epoch(model, dataloader, optimizer, device):
         # 6. Calls ``loss = loss_fn(logits, E)`` to calculate the batch loss
         loss = loss_fn(logits_flat, E)
         total_loss += loss
+        total_seq += F.shape[1]
 
         # 7. Calls ``loss.backward()`` to backpropagate gradients through
         #     ``model``
@@ -109,8 +110,8 @@ def train_for_epoch(model, dataloader, optimizer, device):
         del F, F_lens, E, logits, loss
 
     # 3. Returns the average loss over sequences
-    avg_bleu = total_loss / len(dataloader.data)
-    return avg_bleu
+    avg_loss = total_loss / total_seq if total_seq != 0 else 0
+    return avg_loss
 
 
 def compute_batch_total_bleu(E_ref, E_cand, target_sos, target_eos):
@@ -192,14 +193,13 @@ def compute_average_bleu_over_dataset(
     '''
 
     with torch.no_grad():
-        total_score, total_batches = 0, 0
+        total_score, total_seq = 0, 0
 
         # For every iteration of the `dataloader` (which yields triples``F, F_lens, E_ref``):
         for F, F_lens, E_ref in tqdm(dataloader):
             # 1. Sends ``F`` to the appropriate device via ``F = F.to(device)``. Same
             # for ``F_lens``. No need for ``E_cand``, since it will always be
             # compared on the CPU.
-            batch_size = F.shape[1]
             F, F_lens = F.to(device), F_lens.to(device)
 
             # 2. Performs a beam search by calling ``b_1 = model(F, F_lens)``
@@ -212,12 +212,11 @@ def compute_average_bleu_over_dataset(
             # 4. Computes the total BLEU score of the batch using func: `compute_batch_total_bleu`
             total_score += compute_batch_total_bleu(
                 E_ref, E_cand, target_sos, target_eos)
-            total_batches += 1
+            total_seq += F.shape[1]
 
             del F, F_lens, E_cand, b_1, E_ref
 
     # Returns the average per-sequence BLEU score
-    avg_bleu = total_score / \
-        len(dataloader.data) if len(dataloader.data) != 0 else 0
+    avg_bleu = total_score / total_seq if total_seq != 0 else 0
 
     return avg_bleu
