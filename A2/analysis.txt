@@ -1,4 +1,41 @@
-• The printout after every epoch of the training loop of both the model with attention and without.
+### The printout after every epoch of the training loop of both the model with attention and without.
 Clearly indicate which is which.
-• The average BLEU score reported on the test set for each model. Again, clearly indicate which is which.
-• A brief discussion on your findings. Was there a discrepancy in between training and testing results? Why do you think that is? If one model did better than the other, why do you think that is?
+
+Sorry, I kept running into CUDA OOM - tried no_grad but still didn't really help much. Also tried changing max-vocab and beam size to very small numbers but still :(
+
+-----
+
+### The average BLEU score reported on the test set for each model. Again, clearly indicate which is which.
+
+Same as above, wasn't able to really get anything. 
+
+-----
+
+### A brief discussion on your findings. Was there a discrepancy in between training and testing results? Why do you think that is? If one model did better than the other, why do you think that is?
+
+Since I didn't have the time to run it, I will state my expectations on the model performance given my understanding. 
+
+First, the average training loss will definitely be lower (better) than the testing one. The fact that we use teacher enforcing ensures that the actual "best" word is used as a better "context" to predict the next one. The testing one, on the other hand, can only rely on a beam search and a wrong word chosen will propagate, not to mention all these underfit/overfit issue.
+
+In terms of cell model, I would imagine that LSTM runs better in terms of performance, with a trade off in computational cost - the more complicated structure compare to GRU gives it a higher capacity in storing long-term memory. The simple RNN is probably the worst-performing one, since it has no long term memory at all.
+
+And in terms of attention, the models with attention should definitely do better than those without attention! Since attention helps the decoder to use the "context" with emphasis.
+
+
+-----
+
+### Bonus - analysis on different ways to assemble attentions:
+
+The handout mentioned 2 attention models:
+1. For example, dot-product attention (Vaswani et al., 2017) (as taught in class)
+2. Structured self attention (Lin et al., 2017)
+3. The one we used for this assignment, cosine similarity
+
+I will compare 1 and 3 - sorry but since I still have OOM issues, the following analysis is based purely on research and my understanding.
+
+The main difference is that cosine similarity is magnitude-invariant while dot product isn't. 
+That is, the cosine similarity is more "relative" and has more tolerance, making it more stable - for example, GloVe embedding uses cosine similarity, as well as in image segmentation where you don't care that much about the absolute brightness of each pixel but rather the edges, corners, and relationships. 
+On the other hand, dot product is often better for language models - intuitively, even for word with very similar meanings such as "good" and "awesome," they can have different intensities. 
+
+Resource:
+https://arxiv.org/pdf/1702.05870.pdf

@@ -308,6 +308,6 @@ class EncoderDecoder(EncoderDecoderBase):
         #     b_tm1_selected.shape, v_id.reshape(t, NK).shape, N, K))
         # (t+1, NK) -> (t+1, N, K)
         b_t_1 = torch.cat(
-            (b_tm1_selected, v_id.reshape(1, NK)), -1).view(t+1, N, K)
+            (b_tm1_selected, v_id.reshape(1, NK)), dim=0).view(t+1, N, K)
 
         return b_t_0, b_t_1, logpb_t

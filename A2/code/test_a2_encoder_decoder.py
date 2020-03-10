@@ -13,7 +13,7 @@ import a2_encoder_decoder
 
 def test_update_beam():
     torch.manual_seed(1030)
-    N, K, V, H = 2, 2, 5, 10
+    N, K, V, H = 10, 2, 5, 12
     ed = a2_encoder_decoder.EncoderDecoder(
         a2_encoder_decoder.Encoder, a2_encoder_decoder.DecoderWithAttention,
         V, V,
