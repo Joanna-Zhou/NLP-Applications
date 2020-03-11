@@ -120,13 +120,17 @@ if __name__ == "__main__":
 
                 kaldi = Levenshtein(ref, preproc(kaldi_transcript[i]))
                 kaldi_wer.append(kaldi[0])
-                output.append("[%s] [%s] [%d] [%f] S:[%d] I:[%d] D:[%d]\n" %
-                           (speaker, "Kaldi", i, kaldi[0], kaldi[1], kaldi[2], kaldi[3]))
+                output.append("%s %s %d %.3f S:%d I:%d D:%d\n" %
+                              (speaker, "Kaldi", i, kaldi[0], kaldi[1], kaldi[2], kaldi[3]))
+                # output.append("[%s] [%s] [%d] [%.3f] S:[%d] I:[%d] D:[%d]\n" %
+                #            (speaker, "Kaldi", i, kaldi[0], kaldi[1], kaldi[2], kaldi[3]))
 
                 google = Levenshtein(ref, preproc(google_transcript[i]))
                 google_wer.append(google[0])
-                output.append("[%s] [%s] [%d] [%f] S:[%d] I:[%d] D:[%d]\n" %
+                output.append("%s %s %d %.3f S:%d I:%d D:%d\n" %
                            (speaker, "Google", i, google[0], google[1], google[2], google[3]))
+                # output.append("[%s] [%s] [%d] [%.3f] S:[%d] I:[%d] D:[%d]\n" %
+                #            (speaker, "Google", i, google[0], google[1], google[2], google[3]))
 
     '''Log main info'''
     fout = open("asrDiscussion.txt", 'w')
