@@ -1,4 +1,4 @@
-from sklearn.model_selection import train_test_split
+# from sklearn.model_selection import train_test_split
 import numpy as np
 import os
 import fnmatch
@@ -18,15 +18,13 @@ class theta:
         self.mu = np.zeros((M, d))
         self.Sigma = np.zeros((M, d))
 
-        self.setup(self, M, d)
-
-    def setup(self, M, d, X):
+    def set_up(self, M, d, X):
         ''' Set up preComputedForM and randomize the initial parameters
         '''
         self.M = M
         self.d = d
         self.omega[:, 0] = 1. / M
-        self.mu = X[np.random.choice(X.shape[0], M)] # (T, M)
+        self.mu = X[np.random.choice(X.shape[0], M)]  # (T, M)
         self.Sigma[:, :] = 1.
         # self.preComputedForM = get_preComputedForM(M, d)
 
@@ -61,18 +59,17 @@ def log_b_m_x(m, x, myTheta, preComputedForM=[]):
         As you'll see in tutorial, for efficiency, you can precompute something for 'm' that applies to all x outside of this function.
         If you do this, you pass that precomputed component in preComputedForM
     '''
-    M, d=myTheta.mu.shape
-    axis=0 if len(x.shape) == 1 else 1
-    mu, sig=myTheta.mu[m].squeeze(), myTheta.Sigma[m].squeeze()
-    print("x: {}, mu: {}, mu before squeeze: {}".format(
-        x.shape, mu.shape, myTheta.mu[m].shape))
+    M, d = myTheta.mu.shape
+    axis = 0 if len(x.shape) == 1 else 1
+    mu, sig = myTheta.mu[m], myTheta.Sigma[m]
 
     # Compute the term log_b_m_x depending on if preComputedForM[m] is passed in
     if len(preComputedForM) == 0:
-        log_b_m_x=-0.5 * (np.sum(np.square(x - mu)/sig, axis=axis) + d * np.log(2. * np.pi)
-                          + np.sum(np.log(sig)))
+        log_b_m_x = -0.5 * (np.sum(np.square(x - mu)/sig, axis=axis) + d * np.log(2. * np.pi)
+                            + np.sum(np.log(sig)))
     else:
-        log_b_m_x=-0.5 * (np.sum(x * (x - 2.0 * mu)/sig, axis=axis)) + preComputedForM[m]
+        log_b_m_x = -0.5 * (np.sum(x * (x - 2.0 * mu)/sig,
+                                   axis=axis)) + preComputedForM[m]
 
     return log_b_m_x
 
@@ -85,7 +82,8 @@ def log_p_m_x(m, x, myTheta):
 
     # Numerator (array/list of M elements)
     weights = myTheta.omega.squeeze()
-    log_bs = [log_b_m_x(m, x, myTheta, myTheta.preComputedForM) for m in range(M)]
+    log_bs = [log_b_m_x(m, x, myTheta, myTheta.preComputedForM)
+              for m in range(M)]
 
     # Denominator (scalar, the normalization factor)
     log_sum_weighted_log_bs = logsumexp(a=np.array(bs), b=weights)
@@ -106,10 +104,10 @@ def logLik(log_Bs, myTheta):
         See equation 3 of the handout
     '''
     weights = myTheta.omega
-    print("weights: {}, log_Bs: {}".format(weights.shape, log_Bs.shape))
-    log_Ps = logsumexp(a=log_Bs, axis=0, b=weights) # compute per [m]
+    # print("weights: {}, log_Bs: {}".format(weights.shape, log_Bs.shape))
+    log_P_x_s = logsumexp(a=log_Bs, axis=0, b=weights)  # compute per [m]
 
-    return np.sum(log_Ps) # sum along [t]
+    return np.sum(log_P_x_s)  # sum along [t]
 
 
 def train(speaker, X, M=8, epsilon=0.0, maxIter=20):
@@ -117,34 +115,48 @@ def train(speaker, X, M=8, epsilon=0.0, maxIter=20):
     # Setup theta class
     T, d = X.shape
     myTheta = theta(speaker, M, d)
-    myTheta.setup(M, d, X)
+    myTheta.set_up(M, d, X)
 
     # Defining constants
     i = 0
-    loss_prev = loss_diff = float('-inf')
+    prev_Loss = float('-inf')
+    improvement = float('inf')
 
-    while (i <= maxIter and abs(loss_diff) >= epsilon):
-        print("Iter {} | loss = {}".format(i, loss_prev))
+    while (i <= maxIter and improvement >= epsilon):
         myTheta.set_preComputedForM()
-        
-        T = X.shape[0]
 
-        log_Bs = np.zeros((M, T))
-        log_Ps = np.zeros((M, T))
-
+        '''Compute Intermediate Results'''
+        # Get log_b_m_xs in (M, T) for each [m]
+        log_b_m_xs = np.zeros((M, T))
         for m in range(M):
-            log_Bs[m, :] = log_b_m_x(m, X, myTheta, preComputedForM)
+            log_b_m_xs[m] = log_b_m_x(m, X, myTheta, myTheta.preComputedForM)
 
-        log_Ps_N_r = np.add(np.log(myTheta.omega),  log_Bs)
-        log_Ps = np.add(log_Ps_N_r, -logsumexp(log_Ps_N_r, axis=0))
+        # Get log_p_m_xs in (M, T) in vectorized form, also for each [m]
+        log_weighted_bs = log_b_m_xs + np.log(myTheta.omega)
+        log_normalization = logsumexp(log_weighted_bs, axis=0)
+        log_p_m_xs = log_weighted_bs - log_normalization
 
-        log_Bs, log_Ps = compute_intermediate_results(
-            X, M, myTheta, preComputedForM)
-        loss = logLik(log_Bs, myTheta)
-        myTheta = update_params(myTheta, X, log_Ps, loss)
-        loss_diff = loss - loss_prev
-        loss_prev = loss
+        '''Compute Likelihood of X from current Theta'''
+        loss = logLik(log_b_m_xs, myTheta)
+
+        '''Update parameters'''
+        for m in range(M):
+            p_m_x = np.exp(log_p_m_xs[m])  # (T,)
+            p_m_x_sum = np.sum(p_m_x)  # Scalar (summed over all [t])
+
+            myTheta.omega[m] = p_m_x_sum / T  # Scalar
+            myTheta.mu[m] = np.dot(p_m_x, X) / p_m_x_sum  # (d,)
+            myTheta.Sigma[m] = np.dot(p_m_x, np.square(
+                X)) / p_m_x_sum - np.square(myTheta.mu[m])  # (d,)
+            # print("X: {}, mu: {}, sig: {}".format(
+            #     X.shape, myTheta.mu[m].shape, myTheta.Sigma[m].shape))
+
+        '''Set up for the next iteration'''
+        improvement = loss - prev_Loss
+        prev_Loss = loss
         i += 1
+        if (i%5 == 1): # checkpoint
+            print("Iter {}\t| loss = {:.3f}".format(i, prev_Loss))
 
     return myTheta
 
@@ -162,42 +174,80 @@ def test(mfcc, correctID, models, k=5):
             S-5A -9.21034037197
         the format of the log likelihood (number of decimal places, or exponent) does not matter
     '''
-    bestModel=-1
-    print('TODO')
+    bestModel = -1
+    bestLogLik = float('-inf')
+    models_and_LogLiks = []
+    output = [models[correctID].name+'\n']
+
+    M = models[0].omega.shape[0]
+    T, d = mfcc.shape
+
+    '''Find the log likelihoods of the observation (mfcc) given each model (theta)'''
+    for i in range(len(models)):
+        myTheta = models[i]
+        log_b_m_xs = np.zeros((M, T))
+        for m in range(M):
+            log_b_m_xs[m] = log_b_m_x(
+                m, mfcc, myTheta, myTheta.preComputedForM)
+        score = logLik(log_b_m_xs, myTheta)
+        models_and_LogLiks.append((i, logLik(log_b_m_xs, myTheta)))
+
+    '''Find the best (largest) k likelihoods and their corresponding IDs'''
+    sorted_models_and_LogLiks = sorted(models_and_LogLiks, key=lambda x: x[1], reverse=True)
+    for i, score in sorted_models_and_LogLiks[0:k]:
+        output.append("%s %f\n" % (models[i].name, score))
+
+    '''Log to file'''
+    fout = open("gmmLiks.txt", 'w')
+    for line in output:
+        fout.write(line)
+    fout.close()
+
+    '''Compare to ground truth'''
+    bestModel = sorted_models_and_LogLiks[0][0]
     return 1 if (bestModel == correctID) else 0
 
 
 if __name__ == "__main__":
 
-    trainThetas=[]
-    testMFCCs=[]
+    debug = True
+    trainThetas = []
+    testMFCCs = []
     print('TODO: you will need to modify this main block for Sec 2.3')
-    d=13
-    k=5  # number of top speakers to display, <= 0 if none
-    M=8
-    epsilon=0.0
-    maxIter=20
+    d = 13
+    k = 5  # number of top speakers to display, <= 0 if none
+    M = 8
+    epsilon = 0.0
+    maxIter = 20
     # train a model for each speaker, and reserve data for testing
+    
+    debug_i = 0
     for subdir, dirs, files in os.walk(dataDir):
         for speaker in dirs:
             print(speaker)
 
-            files=fnmatch.filter(os.listdir(
+            files = fnmatch.filter(os.listdir(
                 os.path.join(dataDir, speaker)), '*npy')
             random.shuffle(files)
 
-            testMFCC=np.load(os.path.join(dataDir, speaker, files.pop()))
+            testMFCC = np.load(os.path.join(dataDir, speaker, files.pop()))
             testMFCCs.append(testMFCC)
 
-            X=np.empty((0, d))
+            X = np.empty((0, d))
             for file in files:
-                myMFCC=np.load(os.path.join(dataDir, speaker, file))
-                X=np.append(X, myMFCC, axis=0)
+                myMFCC = np.load(os.path.join(dataDir, speaker, file))
+                X = np.append(X, myMFCC, axis=0)
 
             trainThetas.append(train(speaker, X, M, epsilon, maxIter))
+            
+            debug_i += 1
+            if (debug_i > 3):
+                break
 
+        if debug:
+            break
     # evaluate
     numCorrect=0;
     for i in range(0, len(testMFCCs)):
-        numCorrect += test(testMFCCs[i], i, trainThetas, k)
+        numCorrect += test(testMFCCs[i], i, trainThetas, k=2)
     accuracy=1.0*numCorrect/len(testMFCCs)
