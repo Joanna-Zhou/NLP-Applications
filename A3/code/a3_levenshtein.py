@@ -1,5 +1,6 @@
 import os
 import numpy as np
+import sys
 
 try:
     dataDir = '/u/cs401/A3/data/'
@@ -84,27 +85,56 @@ def Levenshtein(r, h):
 
     return wer, num_substitutes, num_inserts, num_deletes
 
+def fetch_transcript(dataDir, speaker, filename):
+    """Helper function, just to load the transcripts into a list of lines"""
+    filepath = os.path.join(dataDir, speaker, 'transcripts.txt')
+    return open(filepath).readlines()
+
+
+def preproc(string):
+    """Preprocess the input sentence by removing punctuations and turn into lists"""
+    import re
+    string = re.sub(r"[^a-zA-Z0-9\s\[\]]", r"", string)
+    string = string.lower()
+    string = string.strip()
+    string = string.split()
+
+    return string[2:]
 
 if __name__ == "__main__":
-    HUMAN = "transcripts.txt"
-    GOOGLE = "transcripts.Google.txt"
-    KALDI = "transcripts.Kaldi.txt"
+    '''Process each line in each transcript file'''
+    kaldi_wer = google_wer = output = []
 
     for subdir, dirs, files in os.walk(dataDir):
         for speaker in dirs:
-            
-            # Get the transcript
-            humanTranscript = open(os.path.join(dataDir, speaker, HUMAN), "r")
-            googleTranscript = open(os.path.join(dataDir, speaker, GOOGLE), "r")
-            kaldiTranscript = open(os.path.join(dataDir, speaker, KALDI), "r")
+            print("Processing {}...".format(speaker))
 
-            for kaldiHypo, googleHypo, Ref in zip(kaldiTranscript, googleTranscript, humanTranscript):
-                kaldiHypo, googleHypo, Ref = preprocess(
-                    kaldiHypo), preprocess(googleHypo), preprocess(Ref)
+            transcript = fetch_transcript(dataDir, speaker, 'transcripts.txt')
+            google_transcript = fetch_transcript(dataDir, speaker, 'transcripts.Google.txt')
+            kaldi_transcript = fetch_transcript(dataDir, speaker, 'transcripts.Kaldi.txt')
 
-                wer, numSub, numIns, numDel = Levenshtein(Ref, kaldiHypo)
-                print("%5s %6s %2d %4.3f S:%4d, I:%4d, D:%4d" %
-                      (speaker, "Kaldi", i, wer, numSub, numIns, numDel))
-                wer, numSub, numIns, numDel = Levenshtein(Ref, googleHypo)
-                print("%5s %6s %2d %4.3f S:%4d, I:%4d, D:%4d" %
-                      (speaker, "Google", i, wer, numSub, numIns, numDel))
+            for i, ref in enumerate(transcript):
+                ref = preproc(ref)
+
+                kaldi = preproc(kaldi_transcript[i])
+                kaldi = Levenshtein(ref, kaldi)
+                kaldi_wer.append(kaldi[0])
+                out.append("[%s] [%s] [%d] [%f] S:[%d] I:[%d] D:[%d]\n" % \
+                           (speaker, "Kaldi", i, kaldi[0], kaldi[1], kaldi[2], kaldi[3]))
+
+                google = preproc(google_transcript[i])
+                google = Levenshtein(ref, google)
+                google_wer.append(google[0])
+                out.append("[%s] [%s] [%d] [%f] S:[%d] I:[%d] D:[%d]\n" %
+                           (speaker, "Google", i, google[0], google[1], google[2], google[3]))
+
+    '''Log main info'''
+    fout = open("asrDiscussion.txt", 'w')
+    for line in output:
+        # sys.stdout.write(text)
+        fout.write(line)
+
+    '''Log statistical info to second last line'''
+    fout.write("Kaldi - mean: %f, standard deviation: %f. Google - mean: %f standard deviation: %f." %
+               (np.mean(kaldi_wer), np.std(kaldi_wer), np.mean(google_wer), np.std(google_wer)))
+    fout.close()
