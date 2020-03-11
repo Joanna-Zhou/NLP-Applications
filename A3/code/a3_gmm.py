@@ -148,15 +148,13 @@ def train(speaker, X, M=8, epsilon=0.0, maxIter=20):
             myTheta.mu[m] = np.dot(p_m_x, X) / p_m_x_sum  # (d,)
             myTheta.Sigma[m] = np.dot(p_m_x, np.square(
                 X)) / p_m_x_sum - np.square(myTheta.mu[m])  # (d,)
-            # print("X: {}, mu: {}, sig: {}".format(
-            #     X.shape, myTheta.mu[m].shape, myTheta.Sigma[m].shape))
 
         '''Set up for the next iteration'''
         improvement = loss - prev_Loss
         prev_Loss = loss
         i += 1
-        if (i%5 == 1): # checkpoint
-            print("Iter {}\t| loss = {:.3f}".format(i, prev_Loss))
+        # if (i%5 == 1): # checkpoint
+        #     print("Iter {}\t| loss = {:.3f}".format(i, prev_Loss))
 
     return myTheta
 
@@ -210,12 +208,13 @@ def test(mfcc, correctID, models, k=5):
 
 def evaluate_hyperparam(d=13, k=5, M=8, maxIter=20, epsilon=0):
     ''' Just a wrapper for the traning and testing code provided in the original code in main
+        Returns the test accuracy with the model trained with the current hyper-parameters
     '''
     trainThetas = []
     testMFCCs = []
     for subdir, dirs, files in os.walk(dataDir):
         for speaker in dirs:
-            print(speaker)
+            print("Training with speaker {}...".format(speaker))
 
             files = fnmatch.filter(os.listdir(os.path.join(dataDir, speaker)), '*npy')
             random.shuffle(files)
@@ -253,22 +252,22 @@ if __name__ == "__main__":
         fout.write('At maxIter = 20, epsilon = 0:\n')
         for M in M_list:
             accuracy = evaluate_hyperparam(M=M)
-            fout.write('M: {}\t|\taccuracy = {:.4f}\n'.format(M), accuracy)
+            fout.write('M = {}\t=>\taccuracy = {:.4f}\n'.format(M, accuracy))
 
-        # '''Different maxIter'''
-        # fout.write('\n-------\n')
-        # fout.write('At M = 8, epsilon = 0:\n')
-        # for maxIter in maxIter_list:
-        #     accuracy = evaluate_hyperparam(maxIter=maxIter)
-        #     fout.write('maxIter: {}\t|\taccuracy = {:.4f}\n'.format(maxIter), accuracy)
+        '''Different maxIter'''
+        fout.write('\n-------\n')
+        fout.write('At M = 8, epsilon = 0:\n')
+        for maxIter in maxIter_list:
+            accuracy = evaluate_hyperparam(maxIter=maxIter)
+            fout.write('maxIter = {}\t=>\taccuracy = {:.4f}\n'.format(maxIter, accuracy))
 
-        # '''Different epsilon'''
-        # fout.write('\n-------\n')
-        # fout.write('At M = 8, epsilon = 0:\n')
-        # for epsilon in epsilon_list:
-        #     accuracy = evaluate_hyperparam(epsilon=epsilon)
-        #     fout.write('epsilon: {}\t|\taccuracy = {:.4f}\n'.format(
-        #         epsilon), accuracy)
+        '''Different epsilon'''
+        fout.write('\n-------\n')
+        fout.write('At M = 8, epsilon = 0:\n')
+        for epsilon in epsilon_list:
+            accuracy = evaluate_hyperparam(epsilon=epsilon)
+            fout.write('epsilon = {}\t=>\taccuracy = {:.4f}\n'.format(
+                epsilon, accuracy))
         fout.close()
 
     else:
