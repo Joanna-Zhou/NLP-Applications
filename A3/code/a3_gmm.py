@@ -9,7 +9,7 @@ from scipy.special import logsumexp
 
 # dataDir = '/u/cs401/A3/data/'
 dataDir = '/Users/joanna.zyz/NLP-Applications/A3/data'
-
+random.seed(999)
 
 class theta:
     def __init__(self, name, M=8, d=13):
@@ -208,26 +208,16 @@ def test(mfcc, correctID, models, k=5):
     return 1 if (bestModel == correctID) else 0
 
 
-if __name__ == "__main__":
-
-    debug = True
+def evaluate_hyperparam(d=13, k=5, M=8, maxIter=20, epsilon=0):
+    ''' Just a wrapper for the traning and testing code provided in the original code in main
+    '''
     trainThetas = []
     testMFCCs = []
-    print('TODO: you will need to modify this main block for Sec 2.3')
-    d = 13
-    k = 5  # number of top speakers to display, <= 0 if none
-    M = 8
-    epsilon = 0.0
-    maxIter = 20
-    # train a model for each speaker, and reserve data for testing
-    
-    debug_i = 0
     for subdir, dirs, files in os.walk(dataDir):
         for speaker in dirs:
             print(speaker)
 
-            files = fnmatch.filter(os.listdir(
-                os.path.join(dataDir, speaker)), '*npy')
+            files = fnmatch.filter(os.listdir(os.path.join(dataDir, speaker)), '*npy')
             random.shuffle(files)
 
             testMFCC = np.load(os.path.join(dataDir, speaker, files.pop()))
@@ -239,15 +229,48 @@ if __name__ == "__main__":
                 X = np.append(X, myMFCC, axis=0)
 
             trainThetas.append(train(speaker, X, M, epsilon, maxIter))
-            
-            debug_i += 1
-            if (debug_i > 3):
-                break
 
-        if debug:
-            break
-    # evaluate
-    numCorrect=0;
+    numCorrect = 0
     for i in range(0, len(testMFCCs)):
-        numCorrect += test(testMFCCs[i], i, trainThetas, k=2)
-    accuracy=1.0*numCorrect/len(testMFCCs)
+        numCorrect += test(testMFCCs[i], i, trainThetas, k)
+
+    accuracy = 1.0 * numCorrect / len(testMFCCs)
+    return accuracy
+
+if __name__ == "__main__":
+
+    experimental_Mode = True  # TODO: set to false before submission
+
+    if experimental_Mode:
+        # Parameters to be tuned
+        M_list = [1, 2, 4, 8, 12, 16, 20]
+        maxIter_list = [1, 5, 10, 15, 20, 25]
+        epsilon_list = [0.1, 1, 10, 100, 1000]
+
+        fout = open('gmm_Accuracies.txt', 'w')
+
+        '''Different M'''
+        fout.write('At maxIter = 20, epsilon = 0:\n')
+        for M in M_list:
+            accuracy = evaluate_hyperparam(M=M)
+            fout.write('M: {}\t|\taccuracy = {:.4f}\n'.format(M), accuracy)
+
+        # '''Different maxIter'''
+        # fout.write('\n-------\n')
+        # fout.write('At M = 8, epsilon = 0:\n')
+        # for maxIter in maxIter_list:
+        #     accuracy = evaluate_hyperparam(maxIter=maxIter)
+        #     fout.write('maxIter: {}\t|\taccuracy = {:.4f}\n'.format(maxIter), accuracy)
+
+        # '''Different epsilon'''
+        # fout.write('\n-------\n')
+        # fout.write('At M = 8, epsilon = 0:\n')
+        # for epsilon in epsilon_list:
+        #     accuracy = evaluate_hyperparam(epsilon=epsilon)
+        #     fout.write('epsilon: {}\t|\taccuracy = {:.4f}\n'.format(
+        #         epsilon), accuracy)
+        fout.close()
+
+    else:
+        M, maxIter, epsilon = 8, 20, 0
+        accuracy = evaluate_hyperparam(M=M, maxIter=maxIter, epsilon=epsilon)
