@@ -1,0 +1,88 @@
+I.  Experiment with the settings of M and maxIter (or ε if you wish).
+    What happens to classification accuracy as the number of components decreases?
+    What about when the number of possible speakers, S, decreases?
+    With random.seed(1):
+    -------
+    At maxIter = 20, epsilon = 0, maxS = 32:
+        M = 1	=>	accuracy = 0.9688
+        M = 2	=>	accuracy = 1.0000
+        M = 4	=>	accuracy = 0.9688
+        M = 6	=>	accuracy = 0.9688
+        M = 8	=>	accuracy = 1.0000
+    In general, a larger M means a more complicated model, as more modes allows the GMM to capture more detailed structures. However, a high complexity doesn't necessarily lead to a better model - if we train it with a lot of iterations and a large amount of data, a higher M can more likely overfit.
+
+    -------
+    At M = 4, epsilon = 0, maxS = 32:
+        maxIter = 1	=>	accuracy = 0.9688
+        maxIter = 4	=>	accuracy = 1.0000
+        maxIter = 12	=>	accuracy = 0.9688
+        maxIter = 20	=>	accuracy = 1.0000
+    At M = 8, epsilon = 0, maxS = 32:
+        maxIter = 1	=>	accuracy = 1.0000
+        maxIter = 4	=>	accuracy = 1.0000
+        maxIter = 12	=>	accuracy = 1.0000
+        maxIter = 20	=>	accuracy = 1.0000
+    If we use a more complicated GMM (i.e., M = 8), the EM is able to reach 100% test accuracy as early as after the 1st iteration. Thus, I decreased the M to 4 and tried again, which gives us a less stable but still very good result. For this relatively small training data and simple model (i.e., with the assumption that each covariance matrixes is diagnol), the EM algorithm converges so fast that the maxIter doesn't have that much of a impact.
+
+    -------
+    At M = 4, maxIter = 10, maxS = 32:
+        epsilon = 1000.0	=>	accuracy = 0.9375
+        epsilon = 10000.0	=>	accuracy = 0.9688
+        epsilon = 100000.0	=>	accuracy = 1.0000
+    At M = 8, maxIter = 20, maxS = 32:
+        epsilon = 1000.0	=>	accuracy = 1.0000
+        epsilon = 10000.0	=>	accuracy = 1.0000
+        epsilon = 100000.0	=>	accuracy = 1.0000
+
+    I didn't expect a larger epsilon to increase the testing accuracy, since it gives a looser stopping criteria. This trend indicates that we're probably already overfitting the model with 20 iterations, and the large epsilon performs better as it stops the training process before it gets too overfitted.
+
+    -------
+    At M = 4, maxIter = 10, epsilon = 0:
+        maxS = 4	=>	accuracy = 0.7500
+        maxS = 8	=>	accuracy = 0.8750
+        maxS = 16	=>	accuracy = 1.0000
+        maxS = 32	=>	accuracy = 1.0000
+    At M = 8, maxIter = 20, epsilon = 0:
+        maxS = 4	=>	accuracy = 1.0000
+        maxS = 8	=>	accuracy = 1.0000
+        maxS = 16	=>	accuracy = 1.0000
+        maxS = 32	=>	accuracy = 1.0000
+
+    Again, the hyperparameters' impact closely depend on the each other. At a high M and large maxIter, the accuracies remain regardless of how many training data we feed the model. At a small M and low maxIter, it becomes more obvious that the more training data we give the model, the better it is.
+
+
+II. How might you improve the classification accuracy of the Gaussian mixtures, without adding more training data?
+    We can prevent underfitting through:
+    (1) Increase maxIter and tune epsilon accordingly.
+        The current experiments are carried out with a limited number of iterations capping the training. It's more preferrable to terminate the training process only when it has fit to the best of its capacity, if we have sufficient time.
+    (2) Increase M.
+        M = 8 is good enough for the current task. However, increasing M should always add to the model capacity, though at a cost of overfitting.
+    (3) Assume that the covariance matrixes are not just diagnol.
+        Similar to increasing M, this would also add to the amount of parameters that can be learned, thereby increasing the model's capacity.
+
+    And we can also prevent overfitting through:
+    (1) Regularize the input data.
+    (2) Add random noise to the input.
+    (3) Initialize the parameters randomly.
+    (4) Introduce "dropout" by using a random subset of the T observations at each iteration.
+
+
+III.When would your classifier decide that a given test utterance comes from none of the trained speaker models?
+    How would your classifier come to this decision?
+
+    Currently, the classifier ranks the likelihood of a test instance coming from each model and chooses the model that gives the highest likelihood.
+
+    - If we don't modify the code, it would always be able to pick a model (since the ranking is relative) unless all the models provides the same likelihood. This wouldn't happen since we not only randomized the initialization of parameters but also trained them with different speakers.
+        - The only scenario I can think of is mathematical issues - when all the log likelihoods are infinity, which is when all the observations are equally likely so that bm will be zero. But again, this is highly unlikely to happen.
+
+    - We could easily achieve this by adding a threshold so that, if none of the models produces a likelihood over this threshold, we declare that none should be chosen.
+
+
+IV. Can you think of some alternative methods for doing speaker identification that don’t use Gaussian mixtures?
+    Since the speaker identification is essentially a classification problem with each candidate speaker being a class.
+
+    Alternatively, we can use the following results:
+    (1) K-means. This is probably the closest to GMM, just a non-parametric version of how we represent the model for each speaker, in order to fit the features (MFCCs)
+    (2) RNN. Instead of the statistical based models to represent the MFCC features, we can instead use neural networks (i.e., RNN here) to capture the long-term context features instead of the time-invariant MFCC.
+    (3) CNN. We can completely transform the audio recognition to the well-developed image recognition. We can feed spectrograms into a CNN as if they are images.
+    (4) SVM. This is also using the 13-D MFCCs, similar to GMM. We can use support vector machines to turn this 13-D generative problem into a 13-D disciminative problem.

@@ -1,3 +1,26 @@
-At maxIter = 20, epsilon = 0:
-M: 1	|	accuracy = 1.0000
-M: 2	|	accuracy = 0.8438
+At maxIter = 20, epsilon = 0, maxS = 32:
+M = 1	=>	accuracy = 1.0000
+M = 2	=>	accuracy = 1.0000
+M = 4	=>	accuracy = 0.9688
+M = 6	=>	accuracy = 1.0000
+M = 8	=>	accuracy = 1.0000
+
+-------
+At M = 8, epsilon = 0, maxS = 32:
+maxIter = 1	=>	accuracy = 1.0000
+maxIter = 4	=>	accuracy = 1.0000
+maxIter = 12	=>	accuracy = 1.0000
+maxIter = 20	=>	accuracy = 1.0000
+
+-------
+At M = 8, maxIter = 20, maxS = 32:
+epsilon = 1000.0	=>	accuracy = 1.0000
+epsilon = 10000.0	=>	accuracy = 1.0000
+epsilon = 100000.0	=>	accuracy = 1.0000
+
+-------
+At M = 8, maxIter = 20, epsilon = 0:
+maxS = 4	=>	accuracy = 1.0000
+maxS = 8	=>	accuracy = 1.0000
+maxS = 16	=>	accuracy = 1.0000
+maxS = 32	=>	accuracy = 1.0000

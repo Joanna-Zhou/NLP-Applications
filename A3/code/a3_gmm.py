@@ -9,7 +9,7 @@ from scipy.special import logsumexp
 
 # dataDir = '/u/cs401/A3/data/'
 dataDir = '/Users/joanna.zyz/NLP-Applications/A3/data'
-random.seed(999)
+random.seed(1)
 
 class theta:
     def __init__(self, name, M=8, d=13):
@@ -32,7 +32,7 @@ class theta:
         ''' Precompute all the terms inside log_b_m_x that are independent of x
             Returns an array of length M, each of which can be directly added to the x-dependent part of log_b_m_x
         '''
-        # TODO: check is i am supposed to move this out of the function
+        # TODO: move this out of the class
         # Numerator terms
         term_mu = - np.sum(np.power(self.mu, 2)/self.Sigma, axis=1)
 
@@ -183,6 +183,7 @@ def test(mfcc, correctID, models, k=5):
     '''Find the log likelihoods of the observation (mfcc) given each model (theta)'''
     for i in range(len(models)):
         myTheta = models[i]
+        myTheta.set_preComputedForM()
         log_b_m_xs = np.zeros((M, T))
         for m in range(M):
             log_b_m_xs[m] = log_b_m_x(
@@ -196,9 +197,10 @@ def test(mfcc, correctID, models, k=5):
         output.append("%s %f\n" % (models[i].name, score))
 
     '''Log to file'''
-    fout = open("gmmLiks.txt", 'w')
+    fout = open("gmmLiks.txt", 'a+')
     for line in output:
         fout.write(line)
+    fout.write('\n')
     fout.close()
 
     '''Compare to ground truth'''
@@ -206,15 +208,17 @@ def test(mfcc, correctID, models, k=5):
     return 1 if (bestModel == correctID) else 0
 
 
-def evaluate_hyperparam(d=13, k=5, M=8, maxIter=20, epsilon=0):
+def evaluate_hyperparam(d=13, k=5, M=8, maxIter=20, epsilon=0, maxS=32):
     ''' Just a wrapper for the traning and testing code provided in the original code in main
         Returns the test accuracy with the model trained with the current hyper-parameters
     '''
+    print("Experimenting with M={}, maxIter={}, epsilon={}, maxS={}...".format(
+        M, maxIter, epsilon, maxS))
     trainThetas = []
     testMFCCs = []
     for subdir, dirs, files in os.walk(dataDir):
-        for speaker in dirs:
-            print("Training with speaker {}...".format(speaker))
+        for speaker in dirs[0:maxS]:
+            # print("Training with speaker {}...".format(speaker))
 
             files = fnmatch.filter(os.listdir(os.path.join(dataDir, speaker)), '*npy')
             random.shuffle(files)
@@ -230,6 +234,7 @@ def evaluate_hyperparam(d=13, k=5, M=8, maxIter=20, epsilon=0):
             trainThetas.append(train(speaker, X, M, epsilon, maxIter))
 
     numCorrect = 0
+    fout = open("gmmLiks.txt", 'w').close() # Clean up the output file
     for i in range(0, len(testMFCCs)):
         numCorrect += test(testMFCCs[i], i, trainThetas, k)
 
@@ -239,37 +244,50 @@ def evaluate_hyperparam(d=13, k=5, M=8, maxIter=20, epsilon=0):
 if __name__ == "__main__":
 
     experimental_Mode = True  # TODO: set to false before submission
-
-    if experimental_Mode:
+    
+    if experimental_Mode:    
         # Parameters to be tuned
-        M_list = [1, 2, 4, 8, 12, 16, 20]
-        maxIter_list = [1, 5, 10, 15, 20, 25]
-        epsilon_list = [0.1, 1, 10, 100, 1000]
+        M_list = [1, 2, 4, 6, 8]
+        maxIter_list = [1, 4, 12, 20]
+        epsilon_list = [1e3, 1e4, 1e5]
+        maxS_list = [4, 8, 16, 32] # 32 is the default, so skipped
 
         fout = open('gmm_Accuracies.txt', 'w')
 
         '''Different M'''
-        fout.write('At maxIter = 20, epsilon = 0:\n')
+        fout.write('At maxIter = 20, epsilon = 0, maxS = 32:\n')
         for M in M_list:
-            accuracy = evaluate_hyperparam(M=M)
-            fout.write('M = {}\t=>\taccuracy = {:.4f}\n'.format(M, accuracy))
+            accuracy = evaluate_hyperparam(M=M, maxIter=10)
+            fout.write('\tM = {}\t=>\taccuracy = {:.4f}\n'.format(M, accuracy))
 
         '''Different maxIter'''
+        print('\n-------\n')
         fout.write('\n-------\n')
-        fout.write('At M = 8, epsilon = 0:\n')
+        fout.write('At M = 4, epsilon = 0, maxS = 32:\n')
         for maxIter in maxIter_list:
-            accuracy = evaluate_hyperparam(maxIter=maxIter)
-            fout.write('maxIter = {}\t=>\taccuracy = {:.4f}\n'.format(maxIter, accuracy))
+            accuracy = evaluate_hyperparam(M=4, maxIter=maxIter)
+            fout.write('\tmaxIter = {}\t=>\taccuracy = {:.4f}\n'.format(maxIter, accuracy))
 
         '''Different epsilon'''
+        print('\n-------\n')
         fout.write('\n-------\n')
-        fout.write('At M = 8, epsilon = 0:\n')
+        fout.write('At M = 4, maxIter = 10, maxS = 32:\n')
         for epsilon in epsilon_list:
-            accuracy = evaluate_hyperparam(epsilon=epsilon)
-            fout.write('epsilon = {}\t=>\taccuracy = {:.4f}\n'.format(
+            accuracy = evaluate_hyperparam(M=4, maxIter=10, epsilon=epsilon)
+            fout.write('\tepsilon = {}\t=>\taccuracy = {:.4f}\n'.format(
                 epsilon, accuracy))
+            
+        '''Different maxS'''
+        print('\n-------\n')
+        fout.write('\n-------\n')
+        fout.write('At M = 4, maxIter = 10, epsilon = 0:\n')
+        for maxS in maxS_list:
+            accuracy = evaluate_hyperparam(M=4, maxIter=10, maxS=maxS)
+            fout.write('\tmaxS = {}\t=>\taccuracy = {:.4f}\n'.format(
+                maxS, accuracy))
         fout.close()
 
     else:
-        M, maxIter, epsilon = 8, 20, 0
-        accuracy = evaluate_hyperparam(M=M, maxIter=maxIter, epsilon=epsilon)
+        M, maxIter, epsilon, maxS = 8, 20, 0, 32
+        accuracy = evaluate_hyperparam(M=M, maxIter=maxIter, epsilon=epsilon, maxS=maxS)
+        print("Accuracy = {:.4f}\n".format(accuracy))
