@@ -18,38 +18,35 @@ class theta:
         self.mu = np.zeros((M, d))
         self.Sigma = np.zeros((M, d))
 
-    def set_up(self, M, d, X):
-        ''' Set up preComputedForM and randomize the initial parameters
-        '''
-        self.M = M
-        self.d = d
-        self.omega[:, 0] = 1. / M
-        self.mu = X[np.random.choice(X.shape[0], M)]  # (T, M)
-        self.Sigma[:, :] = 1.
-        # self.preComputedForM = get_preComputedForM(M, d)
 
-    def set_preComputedForM(self):
-        ''' Precompute all the terms inside log_b_m_x that are independent of x
-            Returns an array of length M, each of which can be directly added to the x-dependent part of log_b_m_x
-        '''
-        # TODO: move this out of the class
-        # Numerator terms
-        term_mu = - np.sum(np.power(self.mu, 2)/self.Sigma, axis=1)
+# * Helper functions *
+def set_up(myTheta, X):
+    ''' Randomize the initial parameters
+    '''
+    M, d = myTheta.mu.shape
+    T = X.shape[0]
 
-        # Denominator terms
-        term_pi = self.d * np.log(2.0 * np.pi)
-        term_sig = np.sum(np.log(self.Sigma), axis=1)
+    myTheta.omega[:, 0] = 1. / M
+    myTheta.mu = X[np.random.choice(T, M)]
+    myTheta.Sigma[:, :] = 1.
+    return myTheta, M, d, T
 
-        preComputedForM = 0.5 * (term_mu - term_pi - term_sig)
-        self.preComputedForM = preComputedForM
 
-    def get_preComputedForM(self):
-        ''' In case I need to use preComputedForM without recalculating it'''
-        try:
-            return self.preComputedForM
-        except:
-            self.set_preComputedForM(self, self.M, self.d)
-            return self.preComputedForM
+def get_preComputedForM(myTheta):
+    ''' Precompute all the terms inside log_b_m_x that are independent of x
+        Returns an array of length M, each of which can be directly added to the x-dependent part of log_b_m_x
+    '''
+    M, d = myTheta.mu.shape
+
+    # Numerator terms
+    term_mu = - np.sum(np.power(myTheta.mu, 2)/myTheta.Sigma, axis=1)
+
+    # Denominator terms
+    term_pi = d * np.log(2.0 * np.pi)
+    term_sig = np.sum(np.log(myTheta.Sigma), axis=1)
+
+    preComputedForM = 0.5 * (term_mu - term_pi - term_sig)
+    return preComputedForM
 
 
 def log_b_m_x(m, x, myTheta, preComputedForM=[]):
@@ -82,7 +79,8 @@ def log_p_m_x(m, x, myTheta):
 
     # Numerator (array/list of M elements)
     weights = myTheta.omega.squeeze()
-    log_bs = [log_b_m_x(m, x, myTheta, myTheta.preComputedForM)
+    preComputedForM = get_preComputedForM(myTheta)
+    log_bs = [log_b_m_x(m, x, myTheta, preComputedForM)
               for m in range(M)]
 
     # Denominator (scalar, the normalization factor)
@@ -115,7 +113,7 @@ def train(speaker, X, M=8, epsilon=0.0, maxIter=20):
     # Setup theta class
     T, d = X.shape
     myTheta = theta(speaker, M, d)
-    myTheta.set_up(M, d, X)
+    myTheta, M, d, T = set_up(myTheta, X)
 
     # Defining constants
     i = 0
@@ -123,13 +121,13 @@ def train(speaker, X, M=8, epsilon=0.0, maxIter=20):
     improvement = float('inf')
 
     while (i <= maxIter and improvement >= epsilon):
-        myTheta.set_preComputedForM()
+        preComputedForM = get_preComputedForM(myTheta)
 
         '''Compute Intermediate Results'''
         # Get log_b_m_xs in (M, T) for each [m]
         log_b_m_xs = np.zeros((M, T))
         for m in range(M):
-            log_b_m_xs[m] = log_b_m_x(m, X, myTheta, myTheta.preComputedForM)
+            log_b_m_xs[m] = log_b_m_x(m, X, myTheta, preComputedForM)
 
         # Get log_p_m_xs in (M, T) in vectorized form, also for each [m]
         log_weighted_bs = log_b_m_xs + np.log(myTheta.omega)
@@ -183,11 +181,11 @@ def test(mfcc, correctID, models, k=5):
     '''Find the log likelihoods of the observation (mfcc) given each model (theta)'''
     for i in range(len(models)):
         myTheta = models[i]
-        myTheta.set_preComputedForM()
+        preComputedForM = get_preComputedForM(myTheta)
         log_b_m_xs = np.zeros((M, T))
         for m in range(M):
             log_b_m_xs[m] = log_b_m_x(
-                m, mfcc, myTheta, myTheta.preComputedForM)
+                m, mfcc, myTheta, preComputedForM)
         score = logLik(log_b_m_xs, myTheta)
         models_and_LogLiks.append((i, logLik(log_b_m_xs, myTheta)))
 
@@ -243,16 +241,16 @@ def evaluate_hyperparam(d=13, k=5, M=8, maxIter=20, epsilon=0, maxS=32):
 
 if __name__ == "__main__":
 
-    experimental_Mode = True  # TODO: set to false before submission
-    
-    if experimental_Mode:    
+    experimental_Mode = False  # TODO: set to false before submission
+
+    if experimental_Mode:
         # Parameters to be tuned
         M_list = [1, 2, 4, 6, 8]
         maxIter_list = [1, 4, 12, 20]
         epsilon_list = [1e3, 1e4, 1e5]
         maxS_list = [4, 8, 16, 32] # 32 is the default, so skipped
 
-        fout = open('gmm_Accuracies.txt', 'w')
+        fout = open('gmmAccuracies.txt', 'w')
 
         '''Different M'''
         fout.write('At maxIter = 20, epsilon = 0, maxS = 32:\n')
@@ -276,7 +274,7 @@ if __name__ == "__main__":
             accuracy = evaluate_hyperparam(M=4, maxIter=10, epsilon=epsilon)
             fout.write('\tepsilon = {}\t=>\taccuracy = {:.4f}\n'.format(
                 epsilon, accuracy))
-            
+
         '''Different maxS'''
         print('\n-------\n')
         fout.write('\n-------\n')

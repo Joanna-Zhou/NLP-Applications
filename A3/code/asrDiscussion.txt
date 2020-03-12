@@ -505,3 +505,4 @@ S-15C Google 7 0.579 S:32 I:7 D:27
 S-15C Kaldi 8 0.187 S:28 I:15 D:13
 S-15C Google 8 0.201 S:34 I:2 D:24
 Kaldi - mean: 0.279271, standard deviation: 0.106019. Google - mean: 0.414598 standard deviation: 0.125304.
+(1) Labels - Kaldi added labels such as [laughter], [noise], and <unknown> while Google just skipped them. (2) Disfluencies - Kaldi kept disfluencies such as duplicated words resulting from stuttering, while Google replaces most of them with more "fluent" sentences, resulting in deletion errors. (3) In general, Google seems to prefer the language model (i.e. sentences that make sense) over the accuracies over each word.
