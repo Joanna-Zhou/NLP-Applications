@@ -1,0 +1,25 @@
+----------------
+## Voice banking
+----------------
+Username: zhouyiz2
+Email: zyz.zhou@mail.utoronto.ca
+
+---------------------------------
+## Dimensionality reduction (PCA)
+---------------------------------
+Results:
+At M = 8, maxIter = 20, epsilon = 0, maxS = 32:
+	d' = 1	=>	accuracy = 0.8438, time = 56.2888s
+	d' = 2	=>	accuracy = 0.9062, time = 56.2241s
+	d' = 3	=>	accuracy = 0.9688, time = 66.3845s
+	d' = 4	=>	accuracy = 1.0000, time = 79.9337s
+	d' = 6	=>	accuracy = 0.9688, time = 99.5159s
+	d' = 8	=>	accuracy = 1.0000, time = 97.1908s
+	d' = 10	=>	accuracy = 1.0000, time = 131.6110s
+
+Analysis:
+The main motivation behind reducing the dimensionality is, of course, to save space and time in the training process. We tested on a series of dimensions (d') and observed the trend of their resulting accuracy as well as computational time.
+
+As expected, we see that a lower dimension indeed makes it faster to train (including the PCA-transformation time), at a cost of a lower accuracy. The obvious trade-off means that there's one or more "optimal" dimension d', which gives us a high enough accuracy and low enough time. In this case (i.e., with the given set of training data and the other hyperparameters), d' from 3 to 8 all seem good enough; d' below 2 seems to be much weaker with accuracy, while d' above 9 costs almost twice as long to train.
+
+That being said, an accuracy of 0.8438 is already quite good at d'=1. Part of the reason is because we used M = 8, which provides a high-capacity GMM. However, it still indicates that PCA is an effective method of reducing data dimension and speeding up the ASR training/testing process.
