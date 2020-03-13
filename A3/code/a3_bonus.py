@@ -2,8 +2,8 @@ from a3_gmm import *
 from sklearn.decomposition import PCA
 import time
 
-# dataDir = '/u/cs401/A3/data/'
-dataDir = '/Users/joanna.zyz/NLP-Applications/A3/data'
+dataDir = '/u/cs401/A3/data/'
+# dataDir = '/Users/joanna.zyz/NLP-Applications/A3/data'
 
 
 def fitPCA(d, dd):

@@ -7,8 +7,8 @@ import random
 # added libraries
 from scipy.special import logsumexp
 
-# dataDir = '/u/cs401/A3/data/'
-dataDir = '/Users/joanna.zyz/NLP-Applications/A3/data'
+dataDir = '/u/cs401/A3/data/'
+# dataDir = '/Users/joanna.zyz/NLP-Applications/A3/data'
 random.seed(1)
 
 class theta:
