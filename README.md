@@ -23,18 +23,17 @@ This repository features a collection of NLP projects, each designed to explore 
 
 Here are some of the main projects included in this repository:
 
-1. **Text Classification**
-   - Implemented various classifiers to categorize text data.
-   - Files: `text_classification.py`, `classification_report.ipynb`
+1. **Transformer**
+   - Files: `A2/code/a2_encoder_decoder.py`
 
 2. **Sentiment Analysis**
    - Performed sentiment analysis on social media data.
-   - Files: `sentiment_analysis.py`, `sentiment_report.ipynb`
+   - Files: `A1/code/Submissions/a1_classify.py`
 
 3. **Language Modeling**
    - Built and fine-tuned language models for text generation.
-   - Files: `language_modeling.py`, `model_evaluation.ipynb`
+   - Files: `A3/submission/a3_gmm.py`
 
 4. **Data Preprocessing**
    - Applied text cleaning, tokenization, and vectorization techniques.
-   - Files: `data_preprocessing.py`, `preprocessing_steps.ipynb`
+   - Files: `A1/code/code0115/a1_preproc.py`, `A1/code/Submissions/a1_extractFeatures.py`
